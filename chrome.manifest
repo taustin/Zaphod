@@ -1,0 +1,3 @@
+content     zaphod    chrome/content/
+overlay chrome://browser/content/browser.xul chrome://zaphod/content/zaphod.xul
+
