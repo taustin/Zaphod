@@ -1,5 +1,5 @@
 /* -*- Mode: JS; tab-width: 4; indent-tabs-mode: nil; -*-
- * vim: set sw=4 ts=8 et tw=78:
+ * vim: set sw=4 ts=4 et tw=78:
 /* ***** BEGIN LICENSE BLOCK *****
  *
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -22,6 +22,12 @@
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
+ *   Tom Austin <taustin@ucsc.edu>
+ *   Brendan Eich <brendan@mozilla.org>
+ *   Shu-Yu Guo <shu@rfrn.org>
+ *   Dave Herman <dherman@mozilla.com>
+ *   Dimitris Vardoulakis <dimvar@ccs.neu.edu>
+ *   Patrick Walton <pcwalton@mozilla.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -69,7 +75,7 @@ Narcissus.interpreter = (function() {
     }
 
     // The underlying global object for narcissus.
-    var narcissusGlobal = {
+    var narcissusGlobalBase = {
         // Value properties.
         NaN: NaN, Infinity: Infinity, undefined: undefined,
 
@@ -85,7 +91,7 @@ Narcissus.interpreter = (function() {
             x2.callee = x.callee;
             x2.scope = x.scope;
             try {
-                x2.execute(parser.parse(new definitions.Builder, s));
+                x2.execute(parser.parse(s));
                 return x2.result;
             } catch (e if e instanceof SyntaxError || isStackOverflow(e)) {
                 /*
@@ -119,8 +125,7 @@ Narcissus.interpreter = (function() {
 
             // NB: Use the STATEMENT_FORM constant since we don't want to push this
             // function onto the fake compilation context.
-            var x = { builder: new definitions.Builder };
-            var f = parser.FunctionDefinition(t, x, false, parser.STATEMENT_FORM);
+            var f = parser.FunctionDefinition(t, null, false, parser.STATEMENT_FORM);
             var s = {object: global, parent: null};
             return newFunction(f,{scope:s});
         },
@@ -140,7 +145,7 @@ Narcissus.interpreter = (function() {
             return s;
         },
 
-        //Don't want to proxy RegExp or some features won't work
+        // Don't want to proxy RegExp or some features won't work
         RegExp: RegExp,
 
         // Extensions to ECMA.
@@ -154,50 +159,63 @@ Narcissus.interpreter = (function() {
         quit: function() { throw END; }
     };
 
+    var narcissusGlobal = {};
+    function resetEnvironment() {
+        ExecutionContext.current = new ExecutionContext(GLOBAL_CODE);
+        for (let i in narcissusGlobal) {
+            delete narcissusGlobal[i];
+        }
+        for (let i in narcissusGlobalBase) {
+            narcissusGlobal[i] = narcissusGlobalBase[i];
+        }
+    }
+    resetEnvironment();
+
     // Create global handler with needed modifications.
     var globalHandler = definitions.makePassthruHandler(narcissusGlobal);
+
     globalHandler.has = function(name) {
-        if (name in narcissusGlobal) { return true; }
+        if (name in narcissusGlobal)
+            return true;
         // Hide Narcissus implementation code.
-        else if (name === "Narcissus") { return false; }
-        else if (name in hostGlobal) { return true; } 
-        else { return Narcissus.definitions.noPropFound(name); }
+        if (name === "Narcissus")
+            return false;
+        if (hostGlobal.hasOwnProperty(name))
+            return true;
+        return Narcissus.definitions.noPropFound(name);
     };
+
     globalHandler.get = function(receiver, name) {
-        if (narcissusGlobal.hasOwnProperty(name)) {
+        if (narcissusGlobal.hasOwnProperty(name))
             return narcissusGlobal[name];
-        }
-        var globalFun = hostGlobal[name];
-        if (!globalFun) {
-            // Look for an element with the given id
-            return Narcissus.definitions.noPropFound(name);
-        }
-        else if (definitions.isNativeCode(globalFun)) {
+
+        var globalProp = hostGlobal[name];
+        if (definitions.isNativeCode(globalProp)) {
             // Enables native browser functions like 'alert' to work correctly.
             return Proxy.createFunction(
-                    definitions.makePassthruHandler(globalFun),
-                    function() { return globalFun.apply(hostGlobal, arguments); },
-                    function() {
-                        var a = arguments;
-                        switch (a.length) {
-                          case 0:
-                            return new globalFun();
-                          case 1:
-                            return new globalFun(a[0]);
-                          case 2:
-                            return new globalFun(a[0], a[1]);
-                          case 3:
-                            return new globalFun(a[0], a[1], a[2]);
-                          default:
-                            var argStr = "";
-                            for (var i=0; i<a.length; i++) {
-                                argStr += 'a[' + i + '],';
-                            }
-                            return eval('new ' + name + '(' + argStr.slice(0,-1) + ');');
-                        }
-                    });
+                definitions.makePassthruHandler(globalProp),
+                function() { return globalProp.apply(hostGlobal, arguments); },
+                function() {
+                    var a = arguments;
+                    switch (a.length) {
+                      case 0:
+                        return new globalProp();
+                      case 1:
+                        return new globalProp(a[0]);
+                      case 2:
+                        return new globalProp(a[0], a[1]);
+                      case 3:
+                        return new globalProp(a[0], a[1], a[2]);
+                      default:
+                        var argStr = "";
+                        for (var i = 0; i < a.length; i++)
+                            argStr += 'a[' + i + '],';
+                        return eval('new ' + name + '(' + argStr.slice(0,-1) + ');');
+                    }
+                });
         }
-        else { return globalFun; };
+        // If globalProp is not found, call the noPropFound hook.
+        return globalProp ? globalProp : Narcissus.definitions.noPropFound(name);
     };
 
     var global = Proxy.create(globalHandler);
@@ -235,6 +253,7 @@ Narcissus.interpreter = (function() {
         result: undefined,
         target: null,
         ecma3OnlyMode: false,
+
         // Execute a node in this execution context.
         execute: function(n) {
             var prev = ExecutionContext.current;
@@ -266,7 +285,8 @@ Narcissus.interpreter = (function() {
     function getValue(v) {
         if (v instanceof Reference) {
             if (!v.base) {
-                throw new ReferenceError(v.propertyName + " is not defined",
+                if (hostGlobal[v.propertyName]) return hostGlobal[v.propertyName];
+                else throw new ReferenceError(v.propertyName + " is not defined",
                                          v.node.filename, v.node.lineno);
             }
             return v.base[v.propertyName];
@@ -313,7 +333,7 @@ Narcissus.interpreter = (function() {
     }
 
     function execute(n, x) {
-        var a, f, i, j, r, s, t, u, v;
+        var a, c, f, i, j, r, s, t, u, v;
 
         switch (n.type) {
           case FUNCTION:
@@ -359,8 +379,9 @@ Narcissus.interpreter = (function() {
             // FALL THROUGH
 
           case BLOCK:
-            for (i = 0, j = n.length; i < j; i++)
-                execute(n[i], x);
+            c = n.children;
+            for (i = 0, j = c.length; i < j; i++)
+                execute(c[i], x);
             break;
 
           case IF:
@@ -394,7 +415,7 @@ Narcissus.interpreter = (function() {
                 }
                 if (u === s) {
                     for (;;) {                  // this loop exits switch_loop
-                        if (t.statements.length) {
+                        if (t.statements.children.length) {
                             try {
                                 execute(t.statements, x);
                             } catch (e if e === BREAK && x.target === n) {
@@ -436,8 +457,8 @@ Narcissus.interpreter = (function() {
 
             // ECMA deviation to track extant browser JS implementation behavior.
             t = ((v === null || v === undefined) && !x.ecma3OnlyMode)
-              ? v
-              : toObject(v, s, n.object);
+                ? v
+                : toObject(v, s, n.object);
             a = [];
             for (i in t)
                 a.push(i);
@@ -521,11 +542,12 @@ Narcissus.interpreter = (function() {
 
           case VAR:
           case CONST:
-            for (i = 0, j = n.length; i < j; i++) {
-                u = n[i].initializer;
+            c = n.children;
+            for (i = 0, j = c.length; i < j; i++) {
+                u = c[i].initializer;
                 if (!u)
                     continue;
-                t = n[i].name;
+                t = c[i].name;
                 for (s = x.scope; s; s = s.parent) {
                     if (hasDirectProperty(s.object, t))
                         break;
@@ -549,21 +571,23 @@ Narcissus.interpreter = (function() {
           case LABEL:
             try {
                 execute(n.statement, x);
-            } catch (e if e === BREAK && x.target === n) {
+            } catch (e if e === BREAK && x.target === n.target) {
             }
             break;
 
           case COMMA:
-            for (i = 0, j = n.length; i < j; i++)
-                v = getValue(execute(n[i], x));
+            c = n.children;
+            for (i = 0, j = c.length; i < j; i++)
+                v = getValue(execute(c[i], x));
             break;
 
           case ASSIGN:
-            r = execute(n[0], x);
+            c = n.children;
+            r = execute(c[0], x);
             t = n.assignOp;
             if (t)
                 u = getValue(r);
-            v = getValue(execute(n[1], x));
+            v = getValue(execute(c[1], x));
             if (t) {
                 switch (t) {
                   case BITWISE_OR:  v = u | v; break;
@@ -579,73 +603,89 @@ Narcissus.interpreter = (function() {
                   case MOD:         v = u % v; break;
                 }
             }
-            putValue(r, v, n[0]);
+            putValue(r, v, c[0]);
             break;
 
           case HOOK:
-            v = getValue(execute(n[0], x)) ? getValue(execute(n[1], x))
-                                           : getValue(execute(n[2], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) ? getValue(execute(c[1], x))
+                                           : getValue(execute(c[2], x));
             break;
 
           case OR:
-            v = getValue(execute(n[0], x)) || getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) || getValue(execute(c[1], x));
             break;
 
           case AND:
-            v = getValue(execute(n[0], x)) && getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) && getValue(execute(c[1], x));
             break;
 
           case BITWISE_OR:
-            v = getValue(execute(n[0], x)) | getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) | getValue(execute(c[1], x));
             break;
 
           case BITWISE_XOR:
-            v = getValue(execute(n[0], x)) ^ getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) ^ getValue(execute(c[1], x));
             break;
 
           case BITWISE_AND:
-            v = getValue(execute(n[0], x)) & getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) & getValue(execute(c[1], x));
             break;
 
           case EQ:
-            v = getValue(execute(n[0], x)) == getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) == getValue(execute(c[1], x));
             break;
 
           case NE:
-            v = getValue(execute(n[0], x)) != getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) != getValue(execute(c[1], x));
             break;
 
           case STRICT_EQ:
-            v = getValue(execute(n[0], x)) === getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) === getValue(execute(c[1], x));
             break;
 
           case STRICT_NE:
-            v = getValue(execute(n[0], x)) !== getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) !== getValue(execute(c[1], x));
             break;
 
           case LT:
-            v = getValue(execute(n[0], x)) < getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) < getValue(execute(c[1], x));
             break;
 
           case LE:
-            v = getValue(execute(n[0], x)) <= getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) <= getValue(execute(c[1], x));
             break;
 
           case GE:
-            v = getValue(execute(n[0], x)) >= getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) >= getValue(execute(c[1], x));
             break;
 
           case GT:
-            v = getValue(execute(n[0], x)) > getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) > getValue(execute(c[1], x));
             break;
 
           case IN:
-            v = getValue(execute(n[0], x)) in getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) in getValue(execute(c[1], x));
             break;
 
           case INSTANCEOF:
-            t = getValue(execute(n[0], x));
-            u = getValue(execute(n[1], x));
+            c = n.children;
+            t = getValue(execute(c[0], x));
+            u = getValue(execute(c[1], x));
             if (isObject(u) && typeof u.__hasInstance__ === "function")
                 v = u.__hasInstance__(t);
             else
@@ -653,111 +693,122 @@ Narcissus.interpreter = (function() {
             break;
 
           case LSH:
-            v = getValue(execute(n[0], x)) << getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) << getValue(execute(c[1], x));
             break;
 
           case RSH:
-            v = getValue(execute(n[0], x)) >> getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) >> getValue(execute(c[1], x));
             break;
 
           case URSH:
-            v = getValue(execute(n[0], x)) >>> getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) >>> getValue(execute(c[1], x));
             break;
 
           case PLUS:
-            v = getValue(execute(n[0], x)) + getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) + getValue(execute(c[1], x));
             break;
 
           case MINUS:
-            v = getValue(execute(n[0], x)) - getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) - getValue(execute(c[1], x));
             break;
 
           case MUL:
-            v = getValue(execute(n[0], x)) * getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) * getValue(execute(c[1], x));
             break;
 
           case DIV:
-            v = getValue(execute(n[0], x)) / getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) / getValue(execute(c[1], x));
             break;
 
           case MOD:
-            v = getValue(execute(n[0], x)) % getValue(execute(n[1], x));
+            c = n.children;
+            v = getValue(execute(c[0], x)) % getValue(execute(c[1], x));
             break;
 
           case DELETE:
-            t = execute(n[0], x);
+            t = execute(n.children[0], x);
             v = !(t instanceof Reference) || delete t.base[t.propertyName];
             break;
 
           case VOID:
-            getValue(execute(n[0], x));
+            getValue(execute(n.children[0], x));
             break;
 
           case TYPEOF:
-            t = execute(n[0], x);
+            t = execute(n.children[0], x);
             if (t instanceof Reference)
                 t = t.base ? t.base[t.propertyName] : undefined;
             v = typeof t;
             break;
 
           case NOT:
-            v = !getValue(execute(n[0], x));
+            v = !getValue(execute(n.children[0], x));
             break;
 
           case BITWISE_NOT:
-            v = ~getValue(execute(n[0], x));
+            v = ~getValue(execute(n.children[0], x));
             break;
 
           case UNARY_PLUS:
-            v = +getValue(execute(n[0], x));
+            v = +getValue(execute(n.children[0], x));
             break;
 
           case UNARY_MINUS:
-            v = -getValue(execute(n[0], x));
+            v = -getValue(execute(n.children[0], x));
             break;
 
           case INCREMENT:
           case DECREMENT:
-            t = execute(n[0], x);
+            t = execute(n.children[0], x);
             u = Number(getValue(t));
             if (n.postfix)
                 v = u;
-            putValue(t, (n.type === INCREMENT) ? ++u : --u, n[0]);
+            putValue(t, (n.type === INCREMENT) ? ++u : --u, n.children[0]);
             if (!n.postfix)
                 v = u;
             break;
 
           case DOT:
-            r = execute(n[0], x);
+            c = n.children;
+            r = execute(c[0], x);
             t = getValue(r);
-            u = n[1].value;
-            v = new Reference(toObject(t, r, n[0]), u, n);
+            u = c[1].value;
+            v = new Reference(toObject(t, r, c[0]), u, n);
             break;
 
           case INDEX:
-            r = execute(n[0], x);
+            c = n.children;
+            r = execute(c[0], x);
             t = getValue(r);
-            u = getValue(execute(n[1], x));
-            v = new Reference(toObject(t, r, n[0]), String(u), n);
+            u = getValue(execute(c[1], x));
+            v = new Reference(toObject(t, r, c[0]), String(u), n);
             break;
 
           case LIST:
             // Curse ECMA for specifying that arguments is not an Array object!
             v = {};
-            for (i = 0, j = n.length; i < j; i++) {
-                u = getValue(execute(n[i], x));
+            c = n.children;
+            for (i = 0, j = c.length; i < j; i++) {
+                u = getValue(execute(c[i], x));
                 definitions.defineProperty(v, i, u, false, false, true);
             }
             definitions.defineProperty(v, "length", i, false, false, true);
             break;
 
           case CALL:
-            r = execute(n[0], x);
-            a = execute(n[1], x);
+            c = n.children;
+            r = execute(c[0], x);
+            a = execute(c[1], x);
             f = getValue(r);
             if (isPrimitive(f) || typeof f.__call__ !== "function") {
-                throw new TypeError(r + " is not callable",
-                                    n[0].filename, n[0].lineno);
+                throw new TypeError(r + " is not callable", c[0].filename, c[0].lineno);
             }
             t = (r instanceof Reference) ? r.base : null;
             if (t instanceof Activation)
@@ -767,36 +818,39 @@ Narcissus.interpreter = (function() {
 
           case NEW:
           case NEW_WITH_ARGS:
-            r = execute(n[0], x);
+            c = n.children;
+            r = execute(c[0], x);
             f = getValue(r);
             if (n.type === NEW) {
                 a = {};
                 definitions.defineProperty(a, "length", 0, false, false, true);
             } else {
-                a = execute(n[1], x);
+                a = execute(c[1], x);
             }
             if (isPrimitive(f) || typeof f.__construct__ !== "function") {
-                throw new TypeError(r + " is not a constructor",
-                                    n[0].filename, n[0].lineno);
+                throw new TypeError(r + " is not a constructor", c[0].filename, c[0].lineno);
             }
             v = f.__construct__(a, x);
             break;
 
           case ARRAY_INIT:
             v = [];
-            for (i = 0, j = n.length; i < j; i++) {
-                if (n[i])
-                    v[i] = getValue(execute(n[i], x));
+            c = n.children;
+            for (i = 0, j = c.length; i < j; i++) {
+                if (c[i])
+                    v[i] = getValue(execute(c[i], x));
             }
             v.length = j;
             break;
 
           case OBJECT_INIT:
             v = {};
-            for (i = 0, j = n.length; i < j; i++) {
-                t = n[i];
+            c = n.children;
+            for (i = 0, j = c.length; i < j; i++) {
+                t = c[i];
                 if (t.type === PROPERTY_INIT) {
-                    v[t[0].value] = getValue(execute(t[1], x));
+                    let c2 = t.children;
+                    v[c2[0].value] = getValue(execute(c2[1], x));
                 } else {
                     f = newFunction(t, x);
                     u = (t.type === GETTER) ? '__defineGetter__'
@@ -837,7 +891,7 @@ Narcissus.interpreter = (function() {
             break;
 
           case GROUP:
-            v = execute(n[0], x);
+            v = execute(n.children[0], x);
             break;
 
           default:
@@ -867,6 +921,21 @@ Narcissus.interpreter = (function() {
         var proto = {};
         definitions.defineProperty(this, "prototype", proto, true);
         definitions.defineProperty(proto, "constructor", this, false, false, true);
+    }
+
+    function getPropertyDescriptor(obj, name) {
+        while (obj) {
+            if (({}).hasOwnProperty.call(obj, name))
+                return Object.getOwnPropertyDescriptor(obj, name);
+            obj = Object.getPrototypeOf(obj);
+        }
+    }
+
+    function getOwnProperties(obj) {
+        var map = {};
+        for (var name in Object.getOwnPropertyNames(obj))
+            map[name] = Object.getOwnPropertyDescriptor(obj, name);
+        return map;
     }
 
     // Returns a new function wrapped with a Proxy.
@@ -981,44 +1050,44 @@ Narcissus.interpreter = (function() {
 
     if (!('__call__' in Fp)) {
         definitions.defineProperty(Fp, "__call__",
-                       function (t, a, x) {
-                           // Curse ECMA yet again!
-                           a = Array.prototype.splice.call(a, 0, a.length);
-                           return this.apply(t, a);
-                       }, true, true, true);
+                                   function (t, a, x) {
+                                       // Curse ECMA yet again!
+                                       a = Array.prototype.splice.call(a, 0, a.length);
+                                       return this.apply(t, a);
+                                   }, true, true, true);
         definitions.defineProperty(REp, "__call__",
-                       function (t, a, x) {
-                           a = Array.prototype.splice.call(a, 0, a.length);
-                           return this.exec.apply(this, a);
-                       }, true, true, true);
+                                   function (t, a, x) {
+                                       a = Array.prototype.splice.call(a, 0, a.length);
+                                       return this.exec.apply(this, a);
+                                   }, true, true, true);
         definitions.defineProperty(Fp, "__construct__",
-                       function (a, x) {
-                           a = Array.prototype.splice.call(a, 0, a.length);
-                           switch (a.length) {
-                             case 0:
-                               return new this();
-                             case 1:
-                               return new this(a[0]);
-                             case 2:
-                               return new this(a[0], a[1]);
-                             case 3:
-                               return new this(a[0], a[1], a[2]);
-                             default:
-                               var argStr = "";
-                               for (var i=0; i<a.length; i++) {
-                                   argStr += 'a[' + i + '],';
-                               }
-                               return eval('new this(' + argStr.slice(0,-1) + ');');
-                           }
-                       }, true, true, true);
+                                   function (a, x) {
+                                       a = Array.prototype.splice.call(a, 0, a.length);
+                                       switch (a.length) {
+                                         case 0:
+                                           return new this();
+                                         case 1:
+                                           return new this(a[0]);
+                                         case 2:
+                                           return new this(a[0], a[1]);
+                                         case 3:
+                                           return new this(a[0], a[1], a[2]);
+                                         default:
+                                           var argStr = "";
+                                           for (var i=0; i<a.length; i++) {
+                                               argStr += 'a[' + i + '],';
+                                           }
+                                           return eval('new this(' + argStr.slice(0,-1) + ');');
+                                       }
+                                   }, true, true, true);
 
         // Since we use native functions such as Date along with host ones such
         // as global.eval, we want both to be considered instances of the native
         // Function constructor.
         definitions.defineProperty(Fp, "__hasInstance__",
-                       function (v) {
-                           return v instanceof Function || v instanceof global.Function;
-                       }, true, true, true);
+                                   function (v) {
+                                       return v instanceof Function || v instanceof global.Function;
+                                   }, true, true, true);
     }
 
     function thunk(f, x) {
@@ -1030,8 +1099,25 @@ Narcissus.interpreter = (function() {
             return s;
 
         var x = new ExecutionContext(GLOBAL_CODE);
-        x.execute(parser.parse(new definitions.Builder, s, f, l));
+        x.execute(parser.parse(s, f, l));
         return x.result;
+    }
+
+    function printStackTrace(stack) {
+        var st = String(stack).split(/\n/);
+        // beautify stack trace:
+        //   - eliminate blank lines
+        //   - sanitize confusing trace lines for getters and js -e expressions
+        //   - simplify source location reporting
+        //   - indent
+        for (var i = 0; i < st.length; i++) {
+            var line = st[i].trim();
+            if (line) {
+                line = line.replace(/^(\(\))?@/, "<unknown>@");
+                line = line.replace(/@(.*\/|\\)?([^\/\\]+:[0-9]+)/, " at $2");
+                print("    in " + line);
+            }
+        }
     }
 
     // A read-eval-print-loop that roughly tracks the behavior of the js shell.
@@ -1066,41 +1152,66 @@ Narcissus.interpreter = (function() {
             }
         }
 
-        var b = new definitions.Builder;
         var x = new ExecutionContext(GLOBAL_CODE);
+
+        // Line number in/out parameter to parser.parseStdin.
+        var ln = {value: 0};
 
         ExecutionContext.current = x;
         for (;;) {
             x.result = undefined;
             putstr("njs> ");
-            var line = readline();
+            var src = readline();
+
             // If readline receives EOF it returns null.
-            if (line === null) {
+            if (src === null) {
                 print("");
                 break;
             }
+            ++ln.value;
+
             try {
-                execute(parser.parse(b, line, "stdin", 1), x);
+                execute(parser.parseStdin(src, ln), x);
                 display(x.result);
             } catch (e if e === THROW) {
                 print("uncaught exception: " + string(x.result));
             } catch (e if e === END) {
                 break;
             } catch (e if e instanceof SyntaxError) {
-                print(e.toString());
+                const PREFIX = (e.filename || "stdin") + ":" + e.lineNumber + ": ";
+                print(PREFIX + e.toString());
+                print(PREFIX + e.source);
+                print(PREFIX + ".".repeat(e.cursor) + "^");
+            } catch (e if e instanceof Error) {
+                print((e.filename || "stdin") + ":" +  e.lineNumber + ": " + e.toString());
+                if (e.stack)
+                    printStackTrace(e.stack);
             } catch (e) {
-                print("internal Narcissus error");
+                print("unexpected Narcissus exception (" + e + ")");
                 throw e;
             }
         }
         ExecutionContext.current = null;
     }
 
+    function test(thunk) {
+        try {
+            return thunk();
+        } catch (e) {
+            print(e.fileName + ":" + e.lineNumber + ": " + e.name + ": " + e.message);
+            printStackTrace(e.stack);
+        }
+    }
+
     return {
+        // resetEnvironment wipes any properties added externally to global,
+        // but properties added to narcisssusGlobalBase will persist.
         global: global,
+        narcissusGlobalBase: narcissusGlobalBase,
+        resetEnvironment: resetEnvironment,
         evaluate: evaluate,
-        repl: repl
+        repl: repl,
+        test: test
     };
 
 }());
-

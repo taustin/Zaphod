@@ -165,10 +165,12 @@ var Zaphod = {
             let code = elem.getAttribute('on' + action);
             // Add ids to elements with listeners that currently do not have ids
             if (!elem.id) {
-              elem.setAttribute('id', Zaphod.generateUniqueId());
+              let newID = Zaphod.generateUniqueId();
+              elem.setAttribute('id', newID);
             }
             // TODO: figure out what variables should be available.  All from elem?
             let f = '(function() { var style=this.style; ' + code + '}).apply(' + elem.id + ');';
+            //let f = '(function() { with (' + elem.id + ') {' + code + '}).apply(' + elem.id + ');';
             let fun = function(evnt){
               Narcissus.interpreter.global.event = evnt;
               Narcissus.interpreter.evaluate(f);
@@ -177,10 +179,10 @@ var Zaphod = {
             elem.addEventListener(action,
                 fun,
                 false);
-            Zaphod.registeredListeners.push({
+            /*Zaphod.registeredListeners.push({
                   elem: elem,
                   action: action,
-                  fun: fun});
+                  fun: fun});*/
             // Fire load actions immediately
             if (action === "load") {
               fun();
@@ -221,7 +223,7 @@ var Zaphod = {
   createElementHandler: function(elem) {
     var handler = Narcissus.definitions.makePassthruHandler(elem);
     handler.has = function(name) {
-      if (name in obj) { return true; }
+      if (name in elem) { return true; }
 
       var children = elem.getElementsByTagName('*');
       for (let i=0; i<children.length; i++) {
@@ -234,14 +236,8 @@ var Zaphod = {
     }
     handler.get = function(receiver, name) {
       if (elem[name]) {
-        var definitions = Narcissus.definitions;
-        if (definitions.isNativeCode(elem[name])) {
-          let fun = elem[name];
-          // Enables native browser functions like 'alert' to work correctly.
-          return Proxy.createFunction(
-              definitions.makePassthruHandler(fun),
-              function() { return fun.apply(elem, arguments); },
-              function() { throw new Error("Constructors for " + name + " not supported."); });
+        if (Narcissus.definitions.isNativeCode(elem[name])) {
+          return function() { return elem[name].apply(elem, arguments); };
         }
         else return elem[name];
       }
@@ -267,7 +263,9 @@ var Zaphod = {
   },
 
   onPageLoad: function(aEvent) {
-    Zaphod.registeredListeners = [];
+    //Zaphod.registeredListeners = [];
+
+    Narcissus.interpreter.resetEnvironment();
 
     var documentHandler = Zaphod.createElementHandler(content.document);
     Narcissus.interpreter.global.document = Proxy.create(documentHandler);

@@ -20,6 +20,12 @@
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
+ *   Tom Austin <taustin@ucsc.edu>
+ *   Brendan Eich <brendan@mozilla.org>
+ *   Shu-Yu Guo <shu@rfrn.org>
+ *   Dave Herman <dherman@mozilla.com>
+ *   Dimitris Vardoulakis <dimvar@ccs.neu.edu>
+ *   Patrick Walton <pcwalton@mozilla.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -45,30 +51,10 @@
  */
 
 (function() {
-    var builderTypes = Object.create(null, {
-        "default": { value: function() {
-            return new narcissus.parser.DefaultBuilder;
-        } },
-        "ssa": { value: function() {
-            return new narcissus.parser.SSABuilder;
-        } }
-    });
-
-    var builderType;
 
     var narcissus = {
         options: {
             version: 185,
-            get builderType() { return builderType },
-            set builderType(type) {
-                var ctor = builderTypes[type];
-
-                if (!ctor)
-                    throw new Error("expected builder type ('default' or 'ssa'), got " + type);
-
-                builderType = type;
-                narcissus.definitions.Builder = ctor;
-            }
         },
         hostGlobal: this
     };
@@ -125,6 +111,20 @@ Narcissus.definitions = (function() {
         "switch",
         "this", "throw", "true", "try", "typeof",
         "var", "void",
+        "yield",
+        "while", "with",
+    ];
+
+    var statementStartTokens = [
+        "break",
+        "const", "continue",
+        "debugger", "do",
+        "for",
+        "if",
+        "return",
+        "switch",
+        "throw", "try",
+        "var",
         "yield",
         "while", "with",
     ];
@@ -200,6 +200,10 @@ Narcissus.definitions = (function() {
     }
     consts += ";";
 
+    var isStatementStartCode = {__proto__: null};
+    for (i = 0, j = statementStartTokens.length; i < j; i++)
+        isStatementStartCode[keywords[statementStartTokens[i]]] = true;
+
     // Map assignment operators to their indexes in the tokens array.
     var assignOps = ['|', '^', '&', '<<', '>>', '>>>', '+', '-', '*', '/', '%'];
 
@@ -209,11 +213,14 @@ Narcissus.definitions = (function() {
     }
 
     function defineGetter(obj, prop, fn, dontDelete, dontEnum) {
-        Object.defineProperty(obj, prop, { get: fn, configurable: !dontDelete, enumerable: !dontEnum });
+        Object.defineProperty(obj, prop,
+                              { get: fn, configurable: !dontDelete, enumerable: !dontEnum });
     }
 
     function defineProperty(obj, prop, val, dontDelete, readOnly, dontEnum) {
-        Object.defineProperty(obj, prop, { value: val, writable: !readOnly, configurable: !dontDelete, enumerable: !dontEnum });
+        Object.defineProperty(obj, prop,
+                              { value: val, writable: !readOnly, configurable: !dontDelete,
+                                enumerable: !dontEnum });
     }
 
     // Returns true if fn is a native function.  (Note: SpiderMonkey specific.)
@@ -261,7 +268,7 @@ Narcissus.definitions = (function() {
             defineProperty: function(name, desc) {
                 Object.defineProperty(obj, name, desc);
             },
-            delete: function(name) { return delete obj[name]; },
+            "delete": function(name) { return delete obj[name]; },
             fix: function() {
                 if (Object.isFrozen(obj)) {
                     return getOwnProperties(obj);
@@ -289,10 +296,75 @@ Narcissus.definitions = (function() {
     // default function used when looking for a property in the global object
     function noPropFound() { return undefined; }
 
+    var hasOwnProperty = ({}).hasOwnProperty;
+
+    function StringMap() {
+        this.table = Object.create(null, {});
+        this.size = 0;
+    }
+
+    StringMap.prototype = {
+        has: function(x) { return hasOwnProperty.call(this.table, x); },
+        set: function(x, v) {
+            if (!hasOwnProperty.call(this.table, x))
+                this.size++;
+            this.table[x] = v;
+        },
+        get: function(x) { return this.table[x]; },
+        getDef: function(x, thunk) {
+            if (!hasOwnProperty.call(this.table, x)) {
+                this.size++;
+                this.table[x] = thunk();
+            }
+            return this.table[x];
+        },
+        forEach: function(f) {
+            var table = this.table;
+            for (var key in table)
+                f.call(this, key, table[key]);
+        },
+        toString: function() { return "[object StringMap]" }
+    };
+
+    // non-destructive stack
+    function Stack(elts) {
+        this.elts = elts || null;
+    }
+
+    Stack.prototype = {
+        push: function(x) {
+            return new Stack({ top: x, rest: this.elts });
+        },
+        top: function() {
+            if (!this.elts)
+                throw new Error("empty stack");
+            return this.elts.top;
+        },
+        isEmpty: function() {
+            return this.top === null;
+        },
+        find: function(test) {
+            for (var elts = this.elts; elts; elts = elts.rest) {
+                if (test(elts.top))
+                    return elts.top;
+            }
+            return null;
+        },
+        has: function(x) {
+            return Boolean(this.find(function(elt) { return elt === x }));
+        },
+        forEach: function(f) {
+            for (var elts = this.elts; elts; elts = elts.rest) {
+                f(elts.top);
+            }
+        }
+    };
+
     return {
         tokens: tokens,
         opTypeNames: opTypeNames,
         keywords: keywords,
+        isStatementStartCode: isStatementStartCode,
         tokenIds: tokenIds,
         consts: consts,
         assignOps: assignOps,
@@ -301,10 +373,7 @@ Narcissus.definitions = (function() {
         isNativeCode: isNativeCode,
         makePassthruHandler: makePassthruHandler,
         noPropFound: noPropFound,
-        Builder: function() {
-            throw new Error("no Builder type selected");
-        }
+        StringMap: StringMap,
+        Stack: Stack
     };
 }());
-
-Narcissus.options.builderType = "default";

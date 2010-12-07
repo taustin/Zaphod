@@ -20,6 +20,12 @@
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
+ *   Tom Austin <taustin@ucsc.edu>
+ *   Brendan Eich <brendan@mozilla.org>
+ *   Shu-Yu Guo <shu@rfrn.org>
+ *   Dave Herman <dherman@mozilla.com>
+ *   Dimitris Vardoulakis <dimvar@ccs.neu.edu>
+ *   Patrick Walton <pcwalton@mozilla.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -65,7 +71,7 @@ Narcissus.lexer = (function() {
     }
 
     /*
-     * Tokenizer :: (file ptr, path, line number) -> Tokenizer
+     * Tokenizer :: (source, filename, line number) -> Tokenizer
      */
     function Tokenizer(s, f, l) {
         this.cursor = 0;
@@ -74,6 +80,7 @@ Narcissus.lexer = (function() {
         this.tokenIndex = 0;
         this.lookahead = 0;
         this.scanNewlines = false;
+        this.unexpectedEOF = false;
         this.filename = f || "";
         this.lineno = l || 1;
     }
@@ -94,8 +101,10 @@ Narcissus.lexer = (function() {
         },
 
         mustMatch: function (tt) {
-            if (!this.match(tt))
-                throw this.newSyntaxError("Missing " + tokens[tt].toLowerCase());
+            if (!this.match(tt)) {
+                throw this.newSyntaxError("Missing " +
+                                          definitions.tokens[tt].toLowerCase());
+            }
             return this.token;
         },
 
@@ -120,7 +129,7 @@ Narcissus.lexer = (function() {
             return tt;
         },
 
-        // Eats comments and whitespace.
+        // Eat comments and whitespace.
         skip: function () {
             var input = this.source;
             for (;;) {
@@ -164,7 +173,7 @@ Narcissus.lexer = (function() {
             }
         },
 
-        // Lexes the exponential part of a number, if present. Returns true iff an
+        // Lex the exponential part of a number, if present. Return true iff an
         // exponential part was found.
         lexExponent: function() {
             var input = this.source;
@@ -272,16 +281,17 @@ Narcissus.lexer = (function() {
 
             var hasEscapes = false;
             var delim = ch;
-            ch = input[this.cursor++];
-            while (ch !== delim) {
+            while ((ch = input[this.cursor++]) !== delim) {
+                if (this.cursor == input.length)
+                    throw this.newSyntaxError("Unterminated string literal");
                 if (ch === '\\') {
                     hasEscapes = true;
-                    this.cursor++;
+                    if (++this.cursor == input.length)
+                        throw this.newSyntaxError("Unterminated string literal");
                 }
-                ch = input[this.cursor++];
             }
 
-            token.value = (hasEscapes)
+            token.value = hasEscapes
                           ? eval(input.substring(token.start, this.cursor))
                           : input.substring(token.start + 1, this.cursor - 1);
         },
@@ -321,8 +331,8 @@ Narcissus.lexer = (function() {
         lexOp: function (ch) {
             var token = this.token, input = this.source;
 
-            // A bit ugly, but it seems wasteful to write a trie lookup routine for
-            // only 3 characters...
+            // A bit ugly, but it seems wasteful to write a trie lookup routine
+            // for only 3 characters...
             var node = opTokens[ch];
             var next = input[this.cursor];
             if (next in node) {
@@ -370,7 +380,7 @@ Narcissus.lexer = (function() {
         /*
          * Tokenizer.get :: void -> token type
          *
-         * Consumes input *only* if there is no lookahead.
+         * Consume input *only* if there is no lookahead.
          * Dispatch to the appropriate lexing function depending on the input.
          */
         get: function (scanOperand) {
@@ -398,8 +408,7 @@ Narcissus.lexer = (function() {
             token.lineno = this.lineno;
 
             var ch = input[this.cursor++];
-            if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                    ch === '$' || ch === '_') {
+            if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '$' || ch === '_') {
                 this.lexIdent(ch);
             } else if (scanOperand && ch === '/') {
                 this.lexRegExp(ch);
@@ -438,32 +447,13 @@ Narcissus.lexer = (function() {
         newSyntaxError: function (m) {
             var e = new SyntaxError(m, this.filename, this.lineno);
             e.source = this.source;
-            e.cursor = this.cursor;
+            e.cursor = this.lookahead
+                       ? this.tokens[(this.tokenIndex + this.lookahead) & 3].start
+                       : this.cursor;
             return e;
         },
-
-        save: function () {
-            return {
-                cursor: this.cursor,
-                tokenIndex: this.tokenIndex,
-                tokens: this.tokens.slice(),
-                lookahead: this.lookahead,
-                scanNewlines: this.scanNewlines,
-                lineno: this.lineno
-            };
-        },
-
-        rewind: function(point) {
-            this.cursor = point.cursor;
-            this.tokenIndex = point.tokenIndex;
-            this.tokens = point.tokens.slice();
-            this.lookahead = point.lookahead;
-            this.scanNewline = point.scanNewline;
-            this.lineno = point.lineno;
-        }
     };
 
     return { Tokenizer: Tokenizer };
 
 }());
-
