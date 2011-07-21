@@ -73,6 +73,14 @@ var Zaphod = {
 
   },
 
+  log: function(msg) {
+    //Components.utils.reportError(msg);
+    var consoleService = Components.classes["@mozilla.org/consoleservice;1"]
+          .getService(Components.interfaces.nsIConsoleService);
+    consoleService.logStringMessage("Zaphod: " + msg);
+  },
+
+
   // Parse a JS url and return a string of the body
   snarf: function(url) {
     var lastInd = content.location.href.lastIndexOf('/');
@@ -99,6 +107,7 @@ var Zaphod = {
 
   // Load and execute the specified JS url
   loadExternalScript: function(url) {
+    Zaphod.log('Running script from ' + url);
     Narcissus.interpreter.evaluate(Zaphod.snarf(url), url, 1);
   },
 
@@ -126,7 +135,7 @@ var Zaphod = {
       }
     }
     catch (e) {
-      if (this.console) { console.debug("NARCISSUS ERROR: " + e); }
+      Components.utils.reportError(e);
     }
 
   },
@@ -222,6 +231,7 @@ var Zaphod = {
   // Create a handler to search for child elements for unknown properties
   createElementHandler: function(elem) {
     var handler = Narcissus.definitions.makePassthruHandler(elem);
+    ////// Is 'has' needed?
     handler.has = function(name) {
       if (name in elem) { return true; }
 
@@ -234,6 +244,7 @@ var Zaphod = {
       }
       return false;
     }
+    /////////////
     handler.get = function(receiver, name) {
       if (elem[name]) {
         if (Narcissus.definitions.isNativeCode(elem[name])) {
@@ -272,13 +283,15 @@ var Zaphod = {
 
     Narcissus.interpreter.evaluate("window = this");
 
-    Narcissus.definitions.noPropFound = function(name) {
+
+    Narcissus.interpreter.getValueHook = function(name) {
       var value = content.document.getElementById(name);
       if (value) {
         return Proxy.create(Zaphod.createElementHandler(value));
       }
       else return undefined;
     }
+
 
     // Execute the JS on the page with Narcissus, if it is the specified engine.
     if (Zaphod.isActive() || Zaphod.isPageScriptEngine()) {
@@ -289,6 +302,7 @@ var Zaphod = {
     else {
       Zaphod.runNarcissusScripts();
     }
+
   },
 
   onPageUnload: function(aEvent) {

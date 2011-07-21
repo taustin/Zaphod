@@ -54,6 +54,13 @@ Narcissus.lexer = (function() {
     // Set constants in the local scope.
     eval(definitions.consts);
 
+    // Banned keywords by language version
+    const blackLists = { 160: {}, 185: {}, harmony: {} };
+    blackLists[160][LET] = true;
+    blackLists[160][MODULE] = true;
+    blackLists[160][YIELD] = true;
+    blackLists[185][MODULE] = true;
+
     // Build up a trie of operator tokens.
     var opTokens = {};
     for (var op in definitions.opTypeNames) {
@@ -83,6 +90,8 @@ Narcissus.lexer = (function() {
         this.unexpectedEOF = false;
         this.filename = f || "";
         this.lineno = l || 1;
+        this.blackList = blackLists[Narcissus.options.version];
+        this.blockComments = null;
     }
 
     Tokenizer.prototype = {
@@ -129,16 +138,31 @@ Narcissus.lexer = (function() {
             return tt;
         },
 
+        lastBlockComment: function() {
+            var length = this.blockComments.length;
+            return length ? this.blockComments[length - 1] : null;
+        },
+
         // Eat comments and whitespace.
         skip: function () {
             var input = this.source;
+            this.blockComments = [];
             for (;;) {
                 var ch = input[this.cursor++];
                 var next = input[this.cursor];
+                // handle \r, \r\n and (always preferable) \n
+                if (ch === '\r') {
+                    // if the next character is \n, we don't care about this at all
+                    if (next === '\n') continue;
+
+                    // otherwise, we want to consider this as a newline
+                    ch = '\n';
+                }
+
                 if (ch === '\n' && !this.scanNewlines) {
                     this.lineno++;
                 } else if (ch === '/' && next === '*') {
-                    this.cursor++;
+                    var commentStart = ++this.cursor;
                     for (;;) {
                         ch = input[this.cursor++];
                         if (ch === undefined)
@@ -147,6 +171,7 @@ Narcissus.lexer = (function() {
                         if (ch === '*') {
                             next = input[this.cursor];
                             if (next === '/') {
+                                var commentEnd = this.cursor - 1;
                                 this.cursor++;
                                 break;
                             }
@@ -154,19 +179,30 @@ Narcissus.lexer = (function() {
                             this.lineno++;
                         }
                     }
+                    this.blockComments.push(input.substring(commentStart, commentEnd));
                 } else if (ch === '/' && next === '/') {
                     this.cursor++;
                     for (;;) {
                         ch = input[this.cursor++];
+                        next = input[this.cursor];
                         if (ch === undefined)
                             return;
 
+                        if (ch === '\r') {
+                            // check for \r\n
+                            if (next !== '\n') ch = '\n';
+                        }
+
                         if (ch === '\n') {
-                            this.lineno++;
+                            if (this.scanNewlines) {
+                                this.cursor--;
+                            } else {
+                                this.lineno++;
+                            }
                             break;
                         }
                     }
-                } else if (ch !== ' ' && ch !== '\t') {
+                } else if (!(ch in definitions.whitespace)) {
                     this.cursor--;
                     return;
                 }
@@ -281,6 +317,8 @@ Narcissus.lexer = (function() {
 
             var hasEscapes = false;
             var delim = ch;
+            if (input.length <= this.cursor)
+                throw this.newSyntaxError("Unterminated string literal");
             while ((ch = input[this.cursor++]) !== delim) {
                 if (this.cursor == input.length)
                     throw this.newSyntaxError("Unterminated string literal");
@@ -361,19 +399,19 @@ Narcissus.lexer = (function() {
         },
 
         // FIXME: Unicode escape sequences
-        // FIXME: Unicode identifiers
         lexIdent: function (ch) {
-            var token = this.token, input = this.source;
+            var token = this.token;
+            var id = ch;
 
-            do {
-                ch = input[this.cursor++];
-            } while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                     (ch >= '0' && ch <= '9') || ch === '$' || ch === '_');
+            while ((ch = this.getValidIdentifierChar(false)) !== null) {
+                id += ch;
+            }
 
-            this.cursor--;  // Put the non-word character back.
-
-            var id = input.substring(token.start, this.cursor);
             token.type = definitions.keywords[id] || IDENTIFIER;
+            if (token.type in this.blackList) {
+                // banned keyword, this is an identifier
+                token.type = IDENTIFIER;
+            }
             token.value = id;
         },
 
@@ -401,15 +439,16 @@ Narcissus.lexer = (function() {
                 this.tokens[this.tokenIndex] = token = {};
 
             var input = this.source;
-            if (this.cursor === input.length)
+            if (this.cursor >= input.length)
                 return token.type = END;
 
             token.start = this.cursor;
             token.lineno = this.lineno;
 
-            var ch = input[this.cursor++];
-            if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '$' || ch === '_') {
-                this.lexIdent(ch);
+            var ich = this.getValidIdentifierChar(true);
+            var ch = (ich === null) ? input[this.cursor++] : null;
+            if (ich !== null) {
+                this.lexIdent(ich);
             } else if (scanOperand && ch === '/') {
                 this.lexRegExp(ch);
             } else if (ch in opTokens) {
@@ -422,7 +461,9 @@ Narcissus.lexer = (function() {
                 this.lexZeroNumber(ch);
             } else if (ch === '"' || ch === "'") {
                 this.lexString(ch);
-            } else if (this.scanNewlines && ch === '\n') {
+            } else if (this.scanNewlines && (ch === '\n' || ch === '\r')) {
+                // if this was a \r, look for \r\n
+                if (ch === '\r' && input[this.cursor] === '\n') this.cursor++;
                 token.type = NEWLINE;
                 token.value = '\n';
                 this.lineno++;
@@ -452,7 +493,55 @@ Narcissus.lexer = (function() {
                        : this.cursor;
             return e;
         },
+
+        /* Gets a single valid identifier char from the input stream, or null
+         * if there is none.
+         * Since JavaScript provides no convenient way to determine if a
+         * character is in a particular Unicode category, we use
+         * metacircularity to accomplish this (oh yeaaaah!) */
+        getValidIdentifierChar: function(first) {
+            var input = this.source;
+            if (this.cursor >= input.length) return null;
+            var ch = input[this.cursor];
+
+            // first check for \u escapes
+            if (ch === '\\' && input[this.cursor+1] === 'u') {
+                // get the character value
+                try {
+                    ch = String.fromCharCode(parseInt(
+                        input.substring(this.cursor + 2, this.cursor + 6),
+                        16));
+                } catch (ex) {
+                    return null;
+                }
+                this.cursor += 5;
+            }
+
+            // check directly for ASCII
+            if (ch <= "\u007F") {
+                if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '$' || ch === '_' ||
+                    (!first && (ch >= '0' && ch <= '9'))) {
+                    this.cursor++;
+                    return ch;
+                }
+                return null;
+            }
+    
+            // create an object to test this in
+            var x = {};
+            x["x"+ch] = true;
+            x[ch] = true;
+    
+            // then use eval to determine if it's a valid character
+            var valid = false;
+            try {
+                valid = (Function("x", "return (x." + (first?"":"x") + ch + ");")(x) === true);
+            } catch (ex) {}
+            if (valid) this.cursor++;
+            return (valid ? ch : null);
+        },
     };
+
 
     return { Tokenizer: Tokenizer };
 

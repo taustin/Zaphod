@@ -4,6 +4,8 @@
   <script type="application/x-javascript" src="chrome://zaphod/content/jsdefs.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/jslex.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/jsparse.js" />
+  <script type="application/x-javascript" src="chrome://zaphod/content/jsresolve.js" />
+  <script type="application/x-javascript" src="chrome://zaphod/content/hidden.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/jsexec.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/jsbrowser.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/addon.js" />
