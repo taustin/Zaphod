@@ -212,7 +212,7 @@ Narcissus.interpreter = (function() {
     }
 
     var hostHandler = definitions.blacklistHandler(hostGlobal,
-            Narcissus.options.hiddenHostGlobals);
+        Narcissus.options.hiddenHostGlobals);
     var hostHandlerGet = hostHandler.get;
     hostHandler.get = function(receiver, name) {
         return wrapNative(name, hostHandlerGet(receiver, name));
@@ -322,9 +322,8 @@ Narcissus.interpreter = (function() {
         if (v instanceof Reference) {
             if (!v.base) {
                 // Hook needed for Zaphod
-                if (Narcissus.interpreter.getValueHook) {
+                if (Narcissus.interpreter.getValueHook)
                     return Narcissus.interpreter.getValueHook(v.propertyName);
-                }
                 throw new ReferenceError(v.propertyName + " is not defined",
                                          v.node.filename, v.node.lineno);
             }
@@ -673,6 +672,10 @@ Narcissus.interpreter = (function() {
             }
             break;
 
+          case LET:
+            if (!Narcissus.options.treatLetsAsVars)
+                throw new Error('let not yet implemented');
+            // Fall through to VAR
           case VAR:
           case CONST:
             c = n.children;
@@ -1482,6 +1485,7 @@ Narcissus.interpreter = (function() {
         globalBase: globalBase,
         resetEnvironment: resetEnvironment,
         evaluate: evaluate,
+        getValueHook: null,
         repl: repl,
         test: test
     };

@@ -4,3 +4,4 @@ Narcissus.options.hiddenHostGlobals = {
     document: true,
     content: true
 };
+
