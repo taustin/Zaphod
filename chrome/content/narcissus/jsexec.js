@@ -158,6 +158,7 @@ Narcissus.interpreter = (function() {
                 // Called as constructor: save the argument as the string value
                 // of this String object and return this object.
                 this.value = s;
+                this.length = s.length;
                 return this;
             }
             return s;
@@ -184,6 +185,23 @@ Narcissus.interpreter = (function() {
             }
         }
     };
+
+    // Load missing functions onto Array and String
+    ["concat", "every", "foreach", "isArray", "join", "map", "push", "pop",
+        "reverse", "reduce", "shift", "slice", "sort", "splice",
+        "toLocalString", "unshift"].forEach(function(fName) {
+            definitions.defineProperty(globalBase.Array, fName, Array[fName], false,
+                false, true);
+        });
+    ["charAt", "charCodeAt", "concat", "fromCharCode", "indexOf",
+        "lastIndexOf", "localeCompare", "match", "replace", "search", "slice",
+        "split", "substring", "toLowerCase", "toUpperCase", "trim", "valueOf",
+        //HTML methods
+        "big", "blink", "bold", "fixed", "fontcolor", "fontsize", "italics",
+        "link", "small", "strike", "sub", "sup"].forEach(function(fName) {
+            definitions.defineProperty(globalBase.String, fName, String[fName], false,
+                false, true);
+        });
 
     function wrapNative(name, val) {
         if (!definitions.isNativeCode(val))
@@ -415,13 +433,12 @@ Narcissus.interpreter = (function() {
         }
     }
 
-    function initializeVar(x, varName, initializer, type) {
+    function initializeVar(x, varName, varValue, type) {
         var s;
         for (s = x.scope; s; s = s.parent) {
             if (hasDirectProperty(s.object, varName))
                 break;
         }
-        var varValue = getValue(execute(initializer, x));
         if (type === CONST)
             definitions.defineProperty(s.object, varName, varValue, x.type !== EVAL_CODE, true);
         else
@@ -694,11 +711,21 @@ Narcissus.interpreter = (function() {
             c = n.children;
             // destructuring assignments
             if (c[0].name && c[0].name.type === ARRAY_INIT) {
-                let initializers = c[0].initializer.children;
-                for (i = 0, j = initializers.length; i < j; i++) {
-                    u = initializers[i];
-                    t = c[0].name.children[i].value;
-                    initializeVar(x, t, u, n.type);
+                let init = c[0].initializer;
+                if (init.type === ARRAY_INIT) {
+                    let initializers = init.children;
+                    for (i = 0, j = initializers.length; i < j; i++) {
+                        u = initializers[i];
+                        t = c[0].name.children[i].value;
+                        initializeVar(x, t, getValue(execute(u,x)), n.type);
+                    }
+                }
+                else {
+                    let arrVal = getValue(execute(init,x));
+                    for (i = 0, j = arrVal.length; i < j; i++) {
+                        t = c[0].name.children[i].value;
+                        initializeVar(x, t, arrVal[i], n.type);
+                    }
                 }
             }
             else for (i = 0, j = c.length; i < j; i++) {
@@ -706,7 +733,7 @@ Narcissus.interpreter = (function() {
                 if (!u)
                     continue;
                 t = c[i].name;
-                initializeVar(x, t, u, n.type);
+                initializeVar(x, t, getValue(execute(u,x)), n.type);
             }
             break;
 
@@ -964,7 +991,15 @@ Narcissus.interpreter = (function() {
             t = (r instanceof Reference) ? r.base : null;
             if (t instanceof Activation)
                 t = null;
-            v = f.__call__(t, a, x);
+            try {
+                v = f.__call__(t, a, x);
+            }
+            // THA: should probably move this elsewhere
+            catch (e if e !== THROW) {
+                x.result = e;
+                throw THROW;
+            }
+
             break;
 
           case NEW:
@@ -1070,7 +1105,8 @@ Narcissus.interpreter = (function() {
         this.scope = scope;
         definitions.defineProperty(this, "length", node.params.length, true, true, true);
         var proto = {};
-        definitions.defineProperty(this, "prototype", proto, true);
+        //definitions.defineProperty(this, "prototype", proto, true);
+        definitions.defineProperty(this, "prototype", proto);
         definitions.defineProperty(proto, "constructor", this, false, false, true);
     }
 
@@ -1230,7 +1266,8 @@ Narcissus.interpreter = (function() {
                                     this.node.filename, this.node.lineno);
             }
             var o;
-            while ((o = v.__proto__)) {
+            // If __proto__ is not defined, try Object.getPrototypeOf
+            while ((o = Object.getPrototypeOf(v))) {
                 if (o === p)
                     return true;
                 v = o;

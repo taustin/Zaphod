@@ -5,7 +5,7 @@
   <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jslex.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jsparse.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jsresolve.js" />
-  <script type="application/x-javascript" src="chrome://zaphod/content/hidden.js" />
+  <script type="application/x-javascript" src="chrome://zaphod/content/configuration.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jsexec.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/browserAPIs.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/addon.js" />

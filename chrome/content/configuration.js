@@ -5,3 +5,6 @@ Narcissus.options.hiddenHostGlobals = {
     content: true
 };
 
+// Reusing Narcissus to hold configuration details.
+Narcissus.options.useDomjs = false;
+

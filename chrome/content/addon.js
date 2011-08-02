@@ -1,3 +1,5 @@
+/* -*- Mode: JS; tab-width: 2; indent-tabs-mode: nil; -*-
+ * vim: set sw=2 ts=2 et tw=100:*/
 var Zaphod = {
   RESET_ON_SHUTDOWN: true,
   init: function() {
@@ -231,7 +233,7 @@ var Zaphod = {
   // Create a handler to search for child elements for unknown properties
   createElementHandler: function(elem) {
     var handler = Narcissus.definitions.makePassthruHandler(elem);
-    ////// Is 'has' needed?
+    /*///// Is 'has' needed?
     handler.has = function(name) {
       if (name in elem) { return true; }
 
@@ -244,7 +246,7 @@ var Zaphod = {
       }
       return false;
     }
-    /////////////
+    //*///////////
     handler.get = function(receiver, name) {
       if (elem[name]) {
         if (Narcissus.definitions.isNativeCode(elem[name])) {
@@ -273,16 +275,228 @@ var Zaphod = {
     return handler;
   },
 
+  // Reads a file from the chrome code and returns a string of its contents
+  read: function(file) {
+    var ioService=Components.classes["@mozilla.org/network/io-service;1"]
+        .getService(Components.interfaces.nsIIOService);
+    var scriptableStream=Components
+        .classes["@mozilla.org/scriptableinputstream;1"]
+        .getService(Components.interfaces.nsIScriptableInputStream);
+
+    var channel=ioService.newChannel(file,null,null);
+    var input=channel.open();
+
+    scriptableStream.init(input);
+    var str=scriptableStream.read(input.available());
+    scriptableStream.close();
+    input.close();
+
+    return str;
+  },
+
+  // Creates a deep clone of the host node into the dom.js node
+  /*cloneDocument: function(doc) {
+    //var cmd = '';
+
+    // Builds a string to evaluate with Narcissus
+    function cloneNodeStr(n) {
+      var cmd = '', i;
+      if (!n.nodeType) return '';
+      Zaphod.log('Copying ' + n.nodeName);
+      cmd += '(function(){';
+      // Builds string to evaluate
+      switch (n.nodeType) {
+        case Node.ELEMENT_NODE:
+          cmd += 'var n' + ' = document.createElement(' + n.nodeName + ');'
+          for(i = 0, len = n.attributes.length; i < len; i++) {
+            var a = n.attributes[i];
+            //cmd += 'n.setAttributeNS(' + a.namespaceURI + ',' + a.qname + ',' + a.value + ');';
+          }
+          cmd += 'var oldP = this.parnt;';
+          cmd += 'var parnt = n;';
+          for (i in n.childNodes) {
+            cmd += cloneNodeStr(n.childNodes[i]);
+          }
+          cmd += 'parnt = oldP';
+          cmd += 'parnt.appendChild(n);';
+          break;
+        case Node.TEXT_NODE:
+          cmd += 'parnt.appendChild(document.createTextNode(' + n.data + '));';
+          break;
+        case Node.COMMENT_NODE:
+          cmd += 'parnt.appendChild(document.createComment(' + n.data + '));';
+          break;
+        case Node.PROCESSING_INSTRUCTION_NODE:
+          cmd += 'parnt.appendChild(document.createProcessingInstruction(';
+          cmd += n.target + ',' + n.data + '));';
+          break;
+        case Node.DOCUMENT_TYPE_NODE:
+          // do nothing for now
+          break;
+        default:
+          throw new Error("Unexpected node type in copyNodes: " + n.nodeType);
+      }
+      cmd += '})();';
+      Narcissus.interpreter.evaluate('try { ' + cmd + '} catch(e){alert(e);}');
+      return cmd;
+    }
+
+    try {
+      let cmd = cloneNodeStr(doc);
+      Zaphod.log('The command: ' + cmd);
+      Narcissus.interpreter.evaluate(cmd);
+    }
+    catch (e) {
+      alert("Error " + e);
+    }
+  },
+  //*/
+
+  // Evaluate code using block scope within Narcissus
+  eval: function(cmd) {
+    Narcissus.interpreter.evaluate(cmd);
+  },
+
+  /*cloneNode = function(n) {
+    switch (n.nodeType) {
+      case Node.ELEMENT_NODE:
+        let cmd += 'var n' + ' = document.createElement(' + n.nodeName + ');'
+        for(let i = 0, len = n.attributes.length; i < len; i++) {
+          var a = n.attributes[i];
+          cmd += 'n.setAttributeNS(' + a.namespaceURI + ',' + a.qname + ',' + a.value + ');';
+        }
+        cmd += 'parnt.appendChild(n);';
+        cmd += 'parnt = n;';
+        Zaphod.evalInBlock(cmd);
+        for (let i in n.childNodes) {
+          Zaphod.evalInBlock(cloneNodeStr(n.childNodes[i]));
+        }
+      case Node.TEXT_NODE:
+        let cmd += 'parnt.appendChild(document.createTextNode(' + n.data + ');';
+        Zaphod.evalInBlock(cmd);
+        break;
+      case Node.COMMENT_NODE:
+        let cmd += 'parnt.appendChild(document.createComment(' + n.data + ');';
+        Zaphod.evalInBlock(cmd);
+        break;
+      case Node.PROCESSING_INSTRUCTION_NODE:
+        let cmd += 'parnt.appendChild(document.createProcessingInstruction('
+            + n.target + ',' + n.data + ');';
+        Zaphod.evalInBlock(cmd);
+        break;
+      case Node.DOCUMENT_TYPE_NODE:
+        // do nothing for now
+        break;
+      default:
+        throw new Error("Unexpected node type in copyNodes: " + n.nodeType);
+    }
+  },*/
+  /*cloneNodes: function(hostNode) {
+    for(var n = hostNode.firstChild; n !== null; n = n.nextSibling) {
+      switch(n.nodeType) {
+        case Node.ELEMENT_NODE:
+          let cmd += 'var n' + ' = document.createElement(' + n.nodeName + ');'
+          for(let i = 0, len = n.attributes.length; i < len; i++) {
+            var a = n.attributes[i];
+            cmd += 'n.setAttributeNS(' + a.namespaceURI + ',' + a.qname + ',' + a.value + ');';
+          }
+          cmd += 'parnt.appendChild(n);';
+          Zaphod.evalInBlock(cmd);
+        case Node.TEXT_NODE:
+          let cmd += 'parnt.appendChild(document.createTextNode(' + n.data + ');';
+          Zaphod.eval(cmd);
+          break;
+        case Node.COMMENT_NODE:
+          let cmd += 'parnt.appendChild(document.createComment(' + n.data + ');';
+          Zaphod.eval(cmd);
+          break;
+        case Node.PROCESSING_INSTRUCTION_NODE:
+          let cmd += 'parnt.appendChild(document.createProcessingInstruction('
+              + n.target + ',' + n.data + ');';
+          Zaphod.eval(cmd);
+          break;
+        case Node.DOCUMENT_TYPE_NODE:
+          // do nothing for now
+      }
+    }
+  },*/
+
+  /*copynodes: function(from, to) {
+    for(var n = from.firstChild; n !== null; n = n.nextSibling) {
+      switch(n.nodeType) {
+        case Node.ELEMENT_NODE:
+            var copy = ownerDocument.createElement(n.nodeName);
+            // copy attributes
+            for(var i = 0, len = n.attributes.length; i < len; i++) {
+                var a = n.attributes[i];
+                copy.setAttributeNS(a.namespaceURI, a.qname, a.value);
+            }
+            // copy kids
+            copynodes(n,copy);
+            if (n.nodeName === 'HTML') {
+                mydom.appendChild(n);
+            }
+            else {
+                to.appendChild(copy);
+            }
+
+            // If it was a <script> tag, execute the script
+            if (n.tagName === "SCRIPT" && !n.hasAttribute("src")) {
+                var script = n.firstChild.data;
+                runscript(script);
+            }
+
+            break;
+        case Node.TEXT_NODE:
+            to.appendChild(ownerDocument.createTextNode(n.data));
+            break;
+        case Node.COMMENT_NODE:
+            to.appendChild(ownerDocument.createComment(n.data));
+            break;
+        case Node.PROCESSING_INSTRUCTION_NODE:
+            to.appendChild(ownerDocument.createProcessingInstruction(
+                n.target,
+                n.data));
+            break;
+        case Node.DOCUMENT_TYPE_NODE:
+            // XXX: do nothing for now
+            break;
+        default:
+            throw new Error("Unexpected node type in copynodes: " + n.nodeType);
+        }
+    }
+  },//*/
+
+  // Initializes the DOM, either by wrapping the host DOM in a proxy and making
+  // it available to Narcissus, or by loading dom.js and connecting that to
+  // the host DOM.
+  loadDOM: function() {
+    if (Narcissus.options.useDomjs) {
+      var domjs = Zaphod.read('chrome://zaphod/content/domNarc.js');
+      Zaphod.eval(domjs);
+
+      // Utilities needed for dom.js
+      var utils = Zaphod.read('chrome://zaphod/content/utils.js');
+      Zaphod.eval(utils);
+
+      // Copy the host DOM
+      Narcissus.interpreter.global['hostDoc'] = content.document.documentElement;
+      Zaphod.eval('copynodes(hostDoc,document.documentElement)');
+    }
+    else {
+      // Use the underlying DOM within Zaphod
+      var documentHandler = Zaphod.createElementHandler(content.document);
+      Narcissus.interpreter.global.document = Proxy.create(documentHandler);
+    }
+
+    Zaphod.eval("window = this");
+  },
+
   onPageLoad: function(aEvent) {
     //Zaphod.registeredListeners = [];
 
     Narcissus.interpreter.resetEnvironment();
-
-    var documentHandler = Zaphod.createElementHandler(content.document);
-    Narcissus.interpreter.global.document = Proxy.create(documentHandler);
-
-    Narcissus.interpreter.evaluate("window = this");
-
+    Zaphod.loadDOM();
 
     Narcissus.interpreter.getValueHook = function(name) {
       var value = content.document.getElementById(name);
@@ -306,6 +520,7 @@ var Zaphod = {
   },
 
   onPageUnload: function(aEvent) {
+    Narcissus.interpreter.clearAllTimers();
     /*
     for (let i=0; i<Zaphod.registeredListeners; i++) {
       let listener = Zaphod.registeredListeners[i];
