@@ -1,10 +1,10 @@
-// Properties that must be hidden from Narcissus
-Narcissus.options.hiddenHostGlobals = {
-    Narcissus: true,
-    document: true,
-    content: true
-};
+/* -*- Mode: JS; tab-width: 2; indent-tabs-mode: nil; -*-
+ * vim: set sw=2 ts=2 et tw=100:*/
 
-// Reusing Narcissus to hold configuration details.
-Narcissus.options.useDomjs = false;
+Zaphod = {
+  options: {
+    resetOnShutdown: true,
+    useDomjs: false
+  }
+};
 

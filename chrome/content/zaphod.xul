@@ -1,13 +1,7 @@
 <?xml version="1.0"?>
 <overlay id="zaphod" 
          xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-  <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jsdefs.js" />
-  <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jslex.js" />
-  <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jsparse.js" />
-  <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jsresolve.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/configuration.js" />
-  <script type="application/x-javascript" src="chrome://zaphod/content/narcissus/jsexec.js" />
-  <script type="application/x-javascript" src="chrome://zaphod/content/browserAPIs.js" />
   <script type="application/x-javascript" src="chrome://zaphod/content/addon.js" />
   <statusbar id="status-bar">
     <statusbarpanel id="narc-panel">
