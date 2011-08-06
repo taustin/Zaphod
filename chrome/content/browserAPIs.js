@@ -5,7 +5,7 @@
  */
 
 // Prevent setTimeout from breaking out to SpiderMonkey
-Narcissus.interpreter.globalBase.setTimeout = function(code, delay) {
+Narcissus.interpreter.global.setTimeout = function(code, delay) {
     var timeoutCode = (typeof code === "string") ?
             function() { Narcissus.interpreter.evaluate(code); } :
             code;
@@ -13,7 +13,7 @@ Narcissus.interpreter.globalBase.setTimeout = function(code, delay) {
 };
 
 // Prevent setInterval from breaking out to SpiderMonkey
-Narcissus.interpreter.globalBase.setInterval = function(code, delay) {
+Narcissus.interpreter.global.setInterval = function(code, delay) {
     var timeoutCode = (typeof code === "string") ?
             function() { Narcissus.interpreter.evaluate(code); } :
             code;
@@ -21,6 +21,6 @@ Narcissus.interpreter.globalBase.setInterval = function(code, delay) {
 };
 
 // Hack to avoid problems with the Image constructor in Narcissus.
-Narcissus.interpreter.globalBase.Image = function() {};
+Narcissus.interpreter.global.Image = function() {};
 
 

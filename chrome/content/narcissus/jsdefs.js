@@ -56,7 +56,14 @@
         options: {
             version: 185,
             // Global variables to hide from the interpreter
-            hiddenHostGlobals: { Narcissus: true }
+            hiddenHostGlobals: {
+                Narcissus: true,
+                eval: true,
+                run: true,
+                evaluate: true
+            },
+            // Desugar SpiderMonkey language extensions?
+            desugarExtensions: false
         },
         hostSupportsEvalConst: (function() {
             try {

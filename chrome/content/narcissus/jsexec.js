@@ -60,6 +60,7 @@ Narcissus.interpreter = (function() {
     var definitions = Narcissus.definitions;
     var resolver = Narcissus.resolver;
     var hostGlobal = Narcissus.hostGlobal;
+    var desugaring = Narcissus.desugaring;
 
     // Set constants in the local scope.
     eval(definitions.consts);
@@ -70,6 +71,20 @@ Narcissus.interpreter = (function() {
     const Def = resolver.Def;
 
     const GLOBAL_CODE = 0, EVAL_CODE = 1, FUNCTION_CODE = 2, MODULE_CODE = 3;
+
+    // Control flow signals
+    const BREAK_SIGNAL = {},
+          CONTINUE_SIGNAL = {},
+          RETURN_SIGNAL = {},
+          END_SIGNAL = {};
+
+    function isSignal(s) {
+        if (s === BREAK_SIGNAL) return true;
+        if (s === CONTINUE_SIGNAL) return true;
+        if (s === RETURN_SIGNAL) return true;
+        if (s === END_SIGNAL) return true;
+        return false;
+    }
 
     function ExecutionContext(type, version) {
         this.type = type;
@@ -103,24 +118,14 @@ Narcissus.interpreter = (function() {
             x2.caller = x.caller;
             x2.callee = x.callee;
             x2.scope = x.version === "harmony" ? { object: new Object, parent: x.scope } : x.scope;
-            try {
-                var ast = parser.parse(s);
-                if (x.version === "harmony") {
-                    resolver.resolve(ast, new StaticEnv(x.staticEnv));
-                    instantiateModules(ast, x2.scope);
-                }
-                x2.execute(ast);
-                return x2.result;
-            } catch (e if e instanceof SyntaxError || isStackOverflow(e)) {
-                /*
-                 * If we get an internal error during parsing we need to reify
-                 * the exception as a Narcissus THROW.
-                 *
-                 * See bug 152646.
-                 */
-                x.result = e;
-                throw THROW;
+
+            var ast = parser.parse(s);
+            if (x.version === "harmony") {
+                resolver.resolve(ast, new StaticEnv(x.staticEnv));
+                instantiateModules(ast, x2.scope);
             }
+            x2.execute(ast);
+            return x2.result;
         },
 
         // Class constructors.  Where ECMA-262 requires C.length === 1, we declare
@@ -158,7 +163,8 @@ Narcissus.interpreter = (function() {
                 // Called as constructor: save the argument as the string value
                 // of this String object and return this object.
                 this.value = s;
-                this.length = s.length;
+                definitions.defineProperty(this, 'length', s.length, true,
+                        true, true);
                 return this;
             }
             return s;
@@ -175,14 +181,9 @@ Narcissus.interpreter = (function() {
             evaluate(snarf(s), s, 1)
         },
         version: function() { return ExecutionContext.current.version; },
-        quit: function() { throw END; },
+        quit: function() { throw END_SIGNAL; },
         assertEq: function() {
-            try {
-                return assertEq.apply(null, arguments);
-            } catch (e) {
-                ExecutionContext.current.result = e;
-                throw THROW;
-            }
+            return assertEq.apply(null, arguments);
         }
     };
 
@@ -314,14 +315,6 @@ Narcissus.interpreter = (function() {
             ExecutionContext.current = this;
             try {
                 execute(n, this);
-            } catch (e if e === THROW) {
-                // Propagate the throw to the previous context if it exists.
-                if (prev) {
-                    prev.result = this.result;
-                    throw THROW;
-                }
-                // Otherwise reflect the throw into host JS.
-                throw this.result;
             } finally {
                 ExecutionContext.current = prev;
             }
@@ -431,18 +424,6 @@ Narcissus.interpreter = (function() {
             var pair = rhs.children[i];
             bind(pair.children[1].value, pair.children[0].value);
         }
-    }
-
-    function initializeVar(x, varName, varValue, type) {
-        var s;
-        for (s = x.scope; s; s = s.parent) {
-            if (hasDirectProperty(s.object, varName))
-                break;
-        }
-        if (type === CONST)
-            definitions.defineProperty(s.object, varName, varValue, x.type !== EVAL_CODE, true);
-        else
-            s.object[varName] = varValue;
     }
 
     function executeModule(n, x) {
@@ -580,7 +561,7 @@ Narcissus.interpreter = (function() {
                         if (t.statements.children.length) {
                             try {
                                 execute(t.statements, x);
-                            } catch (e if e === BREAK && x.target === n) {
+                            } catch (e if e === BREAK_SIGNAL && x.target === n) {
                                 break switch_loop;
                             }
                         }
@@ -600,9 +581,9 @@ Narcissus.interpreter = (function() {
             while (!n.condition || getValue(execute(n.condition, x))) {
                 try {
                     execute(n.body, x);
-                } catch (e if e === BREAK && x.target === n) {
+                } catch (e if e === BREAK_SIGNAL && x.target === n) {
                     break;
-                } catch (e if e === CONTINUE && x.target === n) {
+                } catch (e if e === CONTINUE_SIGNAL && x.target === n) {
                     // Must run the update expression.
                 }
                 n.update && getValue(execute(n.update, x));
@@ -628,9 +609,9 @@ Narcissus.interpreter = (function() {
                 putValue(execute(r, x), a[i], r);
                 try {
                     execute(n.body, x);
-                } catch (e if e === BREAK && x.target === n) {
+                } catch (e if e === BREAK_SIGNAL && x.target === n) {
                     break;
-                } catch (e if e === CONTINUE && x.target === n) {
+                } catch (e if e === CONTINUE_SIGNAL && x.target === n) {
                     continue;
                 }
             }
@@ -640,29 +621,30 @@ Narcissus.interpreter = (function() {
             do {
                 try {
                     execute(n.body, x);
-                } catch (e if e === BREAK && x.target === n) {
+                } catch (e if e === BREAK_SIGNAL && x.target === n) {
                     break;
-                } catch (e if e === CONTINUE && x.target === n) {
+                } catch (e if e === CONTINUE_SIGNAL && x.target === n) {
                     continue;
                 }
             } while (getValue(execute(n.condition, x)));
             break;
 
           case BREAK:
+            x.target = n.target;
+            throw BREAK_SIGNAL;
+
           case CONTINUE:
             x.target = n.target;
-            throw n.type;
+            throw CONTINUE_SIGNAL;
 
           case TRY:
             try {
                 execute(n.tryBlock, x);
-            } catch (e if e === THROW && (j = n.catchClauses.length)) {
-                e = x.result;
+            } catch (e if !isSignal(e) && (j = n.catchClauses.length)) {
                 x.result = undefined;
                 for (i = 0; ; i++) {
                     if (i === j) {
-                        x.result = e;
-                        throw THROW;
+                        throw e;
                     }
                     t = n.catchClauses[i];
                     x.scope = {object: {}, parent: x.scope};
@@ -683,13 +665,12 @@ Narcissus.interpreter = (function() {
             break;
 
           case THROW:
-            x.result = getValue(execute(n.exception, x));
-            throw THROW;
+            throw getValue(execute(n.exception, x));
 
           case RETURN:
             // Check for returns with no return value
             x.result = n.value ? getValue(execute(n.value, x)) : undefined;
-            throw RETURN;
+            throw RETURN_SIGNAL;
 
           case WITH:
             r = execute(n.object, x);
@@ -702,12 +683,21 @@ Narcissus.interpreter = (function() {
             }
             break;
 
-          case LET:
-            if (!Narcissus.options.treatLetsAsVars)
-                throw new Error('let not yet implemented');
-            // Fall through to VAR
           case VAR:
           case CONST:
+            //FIXME: Real destructuring will be done by destructuring
+            function initializeVar(x, varName, varValue, type) {
+                var s;
+                for (s = x.scope; s; s = s.parent) {
+                    if (hasDirectProperty(s.object, varName))
+                        break;
+                }
+                if (type === CONST)
+                    definitions.defineProperty(s.object, varName, varValue, x.type !== EVAL_CODE, true);
+                else
+                    s.object[varName] = varValue;
+            }
+
             c = n.children;
             // destructuring assignments
             if (c[0].name && c[0].name.type === ARRAY_INIT) {
@@ -748,7 +738,7 @@ Narcissus.interpreter = (function() {
           case LABEL:
             try {
                 execute(n.statement, x);
-            } catch (e if e === BREAK && x.target === n.target) {
+            } catch (e if e === BREAK_SIGNAL && x.target === n.target) {
             }
             break;
 
@@ -991,15 +981,7 @@ Narcissus.interpreter = (function() {
             t = (r instanceof Reference) ? r.base : null;
             if (t instanceof Activation)
                 t = null;
-            try {
-                v = f.__call__(t, a, x);
-            }
-            // THA: should probably move this elsewhere
-            catch (e if e !== THROW) {
-                x.result = e;
-                throw THROW;
-            }
-
+            v = f.__call__(t, a, x);
             break;
 
           case NEW:
@@ -1105,6 +1087,7 @@ Narcissus.interpreter = (function() {
         this.scope = scope;
         definitions.defineProperty(this, "length", node.params.length, true, true, true);
         var proto = {};
+        //FIXME: should be read only, but this was causing some problems in dom.js.
         //definitions.defineProperty(this, "prototype", proto, true);
         definitions.defineProperty(this, "prototype", proto);
         definitions.defineProperty(proto, "constructor", this, false, false, true);
@@ -1238,7 +1221,7 @@ Narcissus.interpreter = (function() {
 
             try {
                 x2.execute(f.body);
-            } catch (e if e === RETURN) {
+            } catch (e if e === RETURN_SIGNAL) {
                 return x2.result;
             }
             return undefined;
@@ -1266,7 +1249,6 @@ Narcissus.interpreter = (function() {
                                     this.node.filename, this.node.lineno);
             }
             var o;
-            // If __proto__ is not defined, try Object.getPrototypeOf
             while ((o = Object.getPrototypeOf(v))) {
                 if (o === p)
                     return true;
@@ -1385,6 +1367,8 @@ Narcissus.interpreter = (function() {
 
         var x = new ExecutionContext(GLOBAL_CODE, Narcissus.options.version);
         var ast = parser.parse(s, f, l);
+        if (Narcissus.options.desugarExtensions)
+            ast = desugaring.desugar(ast);
         if (x.version === "harmony") {
             resolveGlobal(ast);
             instantiateModules(ast, x.scope);
@@ -1464,7 +1448,7 @@ Narcissus.interpreter = (function() {
                 throw BREAK_INTERACTION;
 
               case ".exit":
-                throw END;
+                throw END_SIGNAL;
             }
             return false;
         }
@@ -1489,15 +1473,15 @@ Narcissus.interpreter = (function() {
 
             try {
                 var ast = parser.parseStdin(src, ln, "...  ", isCommand);
+                if (Narcissus.options.desugarExtensions)
+                    ast = desugaring.desugar(ast);
                 if (x.version === "harmony") {
                     resolveGlobal(ast);
                     instantiateModules(ast, x.scope);
                 }
                 execute(ast, x);
                 display(x.result);
-            } catch (e if e === THROW) {
-                print("uncaught exception: " + string(x.result));
-            } catch (e if e === END) {
+            } catch (e if e === END_SIGNAL) {
                 break;
             } catch (e if e === BREAK_INTERACTION) {
                 continue;

@@ -1,10 +1,10 @@
 /* -*- Mode: JS; tab-width: 2; indent-tabs-mode: nil; -*-*/
  /* vim: set sw=2 ts=2 et tw=100:*/
-(function(zaphod) {
-  zaphod.init = function() {
+(function(Zaphod) {
+  Zaphod.init = function() {
     var appcontent = document.getElementById("appcontent");
     if(appcontent) {
-      appcontent.addEventListener("DOMContentLoaded", zaphod.onPageLoad, true);
+      appcontent.addEventListener("DOMContentLoaded", Zaphod.onPageLoad, true);
     }
 
     // Initialize mozJSPref so that it can be used to disable SpiderMonkey
@@ -13,13 +13,13 @@
     var prefSrv = this.prefService = Cc["@mozilla.org/preferences-service;1"]
         .getService(Ci.nsIPrefService).QueryInterface(Ci.nsIPrefBranch);
     var PBI = Ci.nsIPrefBranch2;
-    zaphod.mozJSPref = prefSrv.getBranch("javascript.").QueryInterface(PBI);
+    Zaphod.mozJSPref = prefSrv.getBranch("javascript.").QueryInterface(PBI);
 
     // Get icon
-    zaphod.statusImage = document.getElementById("narcissus-logo");
+    Zaphod.statusImage = document.getElementById("narcissus-logo");
 
     // Initialize engine and icons
-    if (zaphod.isActive()) {
+    if (Zaphod.isActive()) {
       setNarcissusAsEngine();
     }
     else {
@@ -28,12 +28,12 @@
   }
 
   // Reset spidermonkey as the JS engine on shutdown.
-  zaphod.shutdown = function() {
-    if (zaphod.options.resetOnShutdown) { setSpidermonkeyAsEngine(); }
+  Zaphod.shutdown = function() {
+    if (Zaphod.options.resetOnShutdown) { setSpidermonkeyAsEngine(); }
   }
 
   // Listener for uninstallation of this plugin
-  zaphod.uninstallationListener = {
+  Zaphod.uninstallationListener = {
     onUninstalling: function(addon) {
       if (addon.id == "zaphod@mozilla.com") {
         // Reset spidermonkey as the JS engine.
@@ -44,28 +44,28 @@
 
   // Set Narcissus to be used as the JS engine
   function setNarcissusAsEngine(verbose) {
-    zaphod.statusImage.src = "chrome://zaphod/content/mozilla_activated.ico";
-    zaphod.statusImage.tooltipText = "JS engine = Narcissus";
-    zaphod.mozJSPref.setBoolPref("enabled", false);
+    Zaphod.statusImage.src = "chrome://zaphod/content/mozilla_activated.ico";
+    Zaphod.statusImage.tooltipText = "JS engine = Narcissus";
+    Zaphod.mozJSPref.setBoolPref("enabled", false);
     if (verbose) { alert("Narcissus has been set as your JavaScript engine"); }
   }
 
   // Set Spidermonkey to be used as the JS engine
   function setSpidermonkeyAsEngine(verbose) {
-    zaphod.statusImage.src = "chrome://zaphod/content/mozilla_deactivated.ico";
-    zaphod.statusImage.tooltipText = "JS engine = SpiderMonkey";
-    zaphod.mozJSPref.setBoolPref("enabled", true);
+    Zaphod.statusImage.src = "chrome://zaphod/content/mozilla_deactivated.ico";
+    Zaphod.statusImage.tooltipText = "JS engine = SpiderMonkey";
+    Zaphod.mozJSPref.setBoolPref("enabled", true);
     if (verbose) { alert("SpiderMonkey has been reset as your JavaScript engine"); }
   }
 
   // Assumes that Narcissus is the JS engine if javascript is disabled.
-  zaphod.isActive = function() {
-    return !zaphod.mozJSPref.getBoolPref("enabled");
+  Zaphod.isActive = function() {
+    return !Zaphod.mozJSPref.getBoolPref("enabled");
   }
 
   // Switch between narcissus and spidermonkey as the JS engine
-  zaphod.toggleJSEngine = function() {
-    if (zaphod.isActive()) {
+  Zaphod.toggleJSEngine = function() {
+    if (Zaphod.isActive()) {
       setSpidermonkeyAsEngine(true);
     }
     else {
@@ -74,7 +74,7 @@
 
   }
 
-  function log(msg) {
+  Zaphod.log = function(msg) {
     //Components.utils.reportError(msg);
     var consoleService = Components.classes["@mozilla.org/consoleservice;1"]
           .getService(Components.interfaces.nsIConsoleService);
@@ -113,13 +113,13 @@
 
   // Load and execute the specified JS url
   function loadExternalScript(url) {
-    zaphod.log('Running script from ' + url);
+    Zaphod.log('Running script from ' + url);
     Narcissus.interpreter.evaluate(snarf(url), url, 1);
   }
 
    // Run a JS command through Narcissus
-  zaphod.runSnippet = function() {
-    //THA: Load narcissus here
+  Zaphod.runSnippet = function() {
+    if (!this.Narcissus) { loadNarcissus(); }
     var code = prompt("Please enter some Narcissus JavaScript code");
     try {
       evaluate(code);
@@ -155,7 +155,7 @@
         // Loading Narcissus can be slow, so only load it once we find a script
         if (!narcLoaded) {
           loadNarcissus();
-          domLoaded = true;
+          narcLoaded = true;
         }
         runScript(script);
       }
@@ -200,10 +200,6 @@
             elem.addEventListener(action,
                 fun,
                 false);
-            /*Zaphod.registeredListeners.push({
-                  elem: elem,
-                  action: action,
-                  fun: fun});*/
             // Fire load actions immediately
             if (action === "load") {
               fun();
@@ -223,7 +219,7 @@
   })();
 
   // Return true if the page explicitly sets the default script type to 'text/narcissus'
-  zaphod.isScriptEngineForPage = function() {
+  Zaphod.isScriptEngineForPage = function() {
     var metaElems = content.document.getElementsByTagName('meta');
     for (var i=0; i<metaElems.length; i++) {
       var elem = metaElems[i];
@@ -308,8 +304,8 @@
   // it available to Narcissus, or by loading dom.js and connecting that to
   // the host DOM.
   function loadDOM() {
-    if (Narcissus.options.useDomjs) {
-      log('Loading dom.js');
+    if (Zaphod.options.useDomjs) {
+      Zaphod.log('Loading dom.js');
       var domjs = read('chrome://zaphod/content/domNarc.js');
       evaluate(domjs);
 
@@ -318,8 +314,9 @@
       evaluate(utils);
 
       // Copy the host DOM
-      Narcissus.interpreter.global['hostDoc'] = content.document.documentElement;
-      evaluate('copynodes(hostDoc,document.documentElement)');
+      Narcissus.interpreter.global['hostDoc'] = content.document;
+      evaluate('copyDOMintoDomjs()');
+      //FIXME: Clear out utils and hostDoc from narcissus object
     }
     else {
       // Use the underlying DOM within Zaphod
@@ -339,29 +336,28 @@
 
   }
 
-  // Loads the Narcisssus scripts
+  // Loads the Narcissus scripts
   function loadNarcissus() {
+    if (this.Narcissus) return;
+
     let baseURL = 'chrome://zaphod/content/';
     eval(read(baseURL + 'narcissus/jsdefs.js'));
     eval(read(baseURL + 'narcissus/jslex.js'));
     eval(read(baseURL + 'narcissus/jsparse.js'));
     eval(read(baseURL + 'narcissus/jsresolve.js'));
-    Narcissus.options.hiddenHostGlobals = {
-        Narcissus: true,
-        document: true,
-        content: true
-    };
+    Narcissus.options.hiddenHostGlobals.document = true;
+    Narcissus.options.hiddenHostGlobals.content = true;
+    Narcissus.options.hiddenHostGlobals.setInterval = true;
+    Narcissus.options.hiddenHostGlobals.setTimeout = true;
     eval(read(baseURL + 'narcissus/jsexec.js'));
     eval(read(baseURL + 'browserAPIs.js'));
 
     loadDOM();
   }
 
-  zaphod.onPageLoad = function(aEvent) {
-    //Zaphod.registeredListeners = [];
-
+  Zaphod.onPageLoad = function(aEvent) {
     // Execute the JS on the page with Narcissus, if it is the specified engine.
-    if (zaphod.isActive() || zaphod.isScriptEngineForPage()) {
+    if (Zaphod.isActive() || Zaphod.isScriptEngineForPage()) {
       runAllScripts();
       handleListeners();
     }
@@ -371,17 +367,9 @@
     }
   }
 
-  zaphod.onPageUnload = function(aEvent) {
+  Zaphod.onPageUnload = function(aEvent) {
     // Eliminate narcissus
     if (this.Narcissus) { delete this.Narcissus; }
-    /*
-    for (let i=0; i<Zaphod.registeredListeners; i++) {
-      let listener = Zaphod.registeredListeners[i];
-      if (listener.action === 'unload') {
-        fun();
-      }
-    }
-    */
   }
 }(Zaphod));
 

@@ -4,78 +4,53 @@
  * This file holds utilities needed for dom.js.
  */
 
-function copynodes(from, to) {
-  try {
-    var ownerDocument = to.ownerDocument || document;
-    for(var n = from.firstChild; n !== null; n = n.nextSibling) {
-        switch(n.nodeType) {
-        case Node.ELEMENT_NODE:
-          try{
-            var copy = ownerDocument.createElement(n.nodeName);
-            // copy attributes
-            for(var i = 0, len = n.attributes.length; i < len; i++) {
-                var a = n.attributes[i];
-                copy.setAttributeNS(a.namespaceURI, a.qname, a.value);
-            }
-            // copy kids
-            copynodes(n,copy);
-            //if (n.nodeName === 'HTML') {
-            //    document.documentElement.appendChild(copy);
-            //    alert('Title=' + document.getElementsByTagName('title')[0].firstChild.data);
-            //}
-            //else {
-                to.appendChild(copy);
-            //}
 
-            // If it was a <script> tag, execute the script
-            //if (n.tagName === "SCRIPT" && !n.hasAttribute("src")) {
-            //    var script = n.firstChild.data;
-            //    runscript(script);
-            //}
-          } catch (e) { alert('Error caught on ' + n.nodeName); }
-
-            break;
-        case Node.TEXT_NODE:
-            to.appendChild(ownerDocument.createTextNode(n.data));
-            break;
-        case Node.COMMENT_NODE:
-            to.appendChild(ownerDocument.createComment(n.data));
-            break;
-        case Node.PROCESSING_INSTRUCTION_NODE:
-            to.appendChild(ownerDocument.createProcessingInstruction(
-                n.target,
-                n.data));
-            break;
-        case Node.DOCUMENT_TYPE_NODE:
-            // XXX: do nothing for now
-            break;
-        default:
-            throw new Error("Unexpected node type in copynodes: " + n.nodeType);
-        }
-    }
-  } catch (e) { alert('dom.js Error: ' + e); }
-}
-
-function nodeAsStr(n, indent) {
-  var s = '';
-  indent = indent || '';
-  for(var child = n.firstChild; child !== null; child = child.nextSibling) {
-    switch(child.nodeType) {
+(function(exports) {
+  // Converts a host DOM node to a dom.js node.
+  function convertNode(hostNode) {
+    var n, i;
+    switch (hostNode.nodeType) {
       case Node.ELEMENT_NODE:
-        s += '\n' + indent + child.tagName + ' ';
-        s += nodeAsStr(child, '  ' + indent);
+        n = document.createElement(hostNode.tagName);
+        for (i=0; i<hostNode.childNodes.length; i++) {
+          var child = hostNode.childNodes[i];
+          // A default title element is created by dom.js
+          if (child.nodeName.toLowerCase() !== 'title') {
+            n.appendChild(convertNode(child));
+          }
+        }
+        for(i = 0; i < hostNode.attributes.length; i++) {
+          var attr = hostNode.attributes[i];
+          n.setAttribute(attr.name, attr.value);
+        }
         break;
       case Node.PROCESSING_INSTRUCTION_NODE:
-        s += 'PI:' + child.data;
+        n = document.createProcessingInstruction(hostNode.target, hostNode.data);
         break;
       case Node.TEXT_NODE:
-        s += 'TEXT:' + child.data;
+        n = document.createTextNode(hostNode.data);
         break;
       case Node.COMMENT_NODE:
-        s += 'COMMENT:' + child.data;
+        n = document.createComment(hostNode.data);
         break;
+      default:
+        Zaphod.log('unhandled node type: ' + hostNode.nodeType);
     }
+    return n;
   }
-  return s;
-}
+
+  exports.copyDOMintoDomjs = function() {
+    var head = document.getElementsByTagName('head')[0];
+    var hostHead = hostDoc.getElementsByTagName('head')[0];
+    head.appendChild(convertNode(hostHead));
+
+    var title = document.getElementsByTagName('title')[0];
+    var hostTitle = hostDoc.getElementsByTagName('title')[0];
+    title.firstChild.nodeValue = hostTitle.firstChild.data;
+
+    var body = document.getElementsByTagName('body')[0];
+    var hostBody = hostDoc.getElementsByTagName('body')[0];
+    body.appendChild(convertNode(hostBody));
+  }
+})(this);
 
