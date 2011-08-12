@@ -75,7 +75,6 @@
   }
 
   Zaphod.log = function(msg) {
-    //Components.utils.reportError(msg);
     var consoleService = Components.classes["@mozilla.org/consoleservice;1"]
           .getService(Components.interfaces.nsIConsoleService);
     consoleService.logStringMessage("Zaphod: " + msg);
@@ -189,12 +188,11 @@
               let newID = generateUniqueId();
               elem.setAttribute('id', newID);
             }
-            // TODO: figure out what variables should be available.  All from elem?
+            // TODO: Fix this -- there has to be a cleaner way.  Also, need more than just style.
             let f = '(function() { var style=this.style; ' + code + '}).apply(' + elem.id + ');';
-            //let f = '(function() { with (' + elem.id + ') {' + code + '}).apply(' + elem.id + ');';
             let fun = function(evnt){
               Narcissus.interpreter.global.event = evnt;
-              Narcissus.interpreter.evaluate(f);
+              evaluate(f);
               Narcissus.interpreter.global.event = undefined;
             };
             elem.addEventListener(action,
@@ -307,11 +305,11 @@
     if (Zaphod.options.useDomjs) {
       Zaphod.log('Loading dom.js');
       var domjs = read('chrome://zaphod/content/domNarc.js');
-      evaluate(domjs);
+      evaluate(domjs, 'domNarc.js', 1);
 
       // Utilities needed for dom.js
       var utils = read('chrome://zaphod/content/utils.js');
-      evaluate(utils);
+      evaluate(utils, 'utils.js', 1);
 
       // Copy the host DOM
       Narcissus.interpreter.global['hostDoc'] = content.document;

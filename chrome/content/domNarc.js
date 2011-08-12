@@ -183,6 +183,8 @@ const
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
 const XMLNS_NAMESPACE = "http://www.w3.org/2000/xmlns/";
+const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 
 // Anything I want to define lazily using defineLazyProperty above has
@@ -513,29 +515,29 @@ const [isValidName, isValidQName] = (function() {
                                     ncname + ":" + ncname + ")$");
 
     function isValidName(s) {
-        if (simplename.test(s)) return true;  // Plain ASCII
-        if (name.test(s)) return true;        // Unicode BMP
+        if (test(simplename, s)) return true;  // Plain ASCII
+        if (test(name, s)) return true;        // Unicode BMP
 
         // Maybe the tests above failed because s includes surrogate pairs
         // Most likely, though, they failed for some more basic syntax problem
-        if (!hassurrogates.test(s)) return false;
+        if (!test(hassurrogates, s)) return false;
 
         // Is the string a valid name if we allow surrogates?
-        if (!surrogatename.test(s)) return false;
+        if (!test(surrogatename, s)) return false;
 
         // Finally, are the surrogates all correctly paired up?
-        var chars = s.match(surrogatechars), pairs = s.match(surrogatepairs);
+        var chars = match(s, surrogatechars), pairs = match(s, surrogatepairs);
         return pairs != null && 2*pairs.length === chars.length;
     }
 
 
     function isValidQName(s) {
-        if (simpleqname.test(s)) return true;  // Plain ASCII
-        if (qname.test(s)) return true;        // Unicode BMP
+        if (test(simpleqname, s)) return true;  // Plain ASCII
+        if (test(qname, s)) return true;        // Unicode BMP
         
-        if (!hassurrogates.test(s)) return false;
-        if (!surrogateqname.test(s)) return false;
-        var chars = s.match(surrogatechars), pairs = s.match(surrogatepairs);
+        if (!test(hassurrogates, s)) return false;
+        if (!test(surrogateqname, s)) return false;
+        var chars = match(s, surrogatechars), pairs = match(s, surrogatepairs);
         return pairs != null && 2*pairs.length === chars.length;
     }
 
@@ -561,6 +563,10 @@ const [isValidName, isValidQName] = (function() {
 //
 function toULong(x) {
     return x >>> 0;  // The >>> operator does ToUint32
+}
+
+function toLong(x) {
+    return x & 0xFFFFFFFF; // This should do ToInt32
 }
 
 function undef2null(x) { return x === undefined ? null : x; }
@@ -623,7 +629,7 @@ function IDLInterface(o) {
     // Set up the prototype object
     prototype = superclass ? O.create(superclass.prototype) : {};
 
-    if (o.hasOwnProperty("constructor")) {
+    if (hasOwnProperty(o, "constructor")) {
         interfaceObject = o.constructor;
     }
     else {
@@ -796,7 +802,7 @@ defineLazyProperty(idl, "Event", function() {
 //
 
 function EventInit(o) {
-    var rv = Object.create(EventInit.prototype);
+    var rv = O.create(EventInit.prototype);
     if ('bubbles' in o) rv['bubbles'] = Boolean(o['bubbles']);
     if ('cancelable' in o) rv['cancelable'] = Boolean(o['cancelable']);
     return rv;
@@ -841,7 +847,7 @@ defineLazyProperty(idl, "CustomEvent", function() {
 //
 
 function CustomEventInit(o) {
-    var rv = Object.create(CustomEventInit.prototype);
+    var rv = O.create(CustomEventInit.prototype);
     if ('bubbles' in o) rv['bubbles'] = Boolean(o['bubbles']);
     if ('cancelable' in o) rv['cancelable'] = Boolean(o['cancelable']);
     if ('detail' in o) rv['detail'] = o['detail'];
@@ -850,7 +856,7 @@ function CustomEventInit(o) {
 function OptionalCustomEventInit(o) {
     return (o === undefined) ? undefined : CustomEventInit(o);
 }
-CustomEventInit.prototype = Object.create(EventInit.prototype);
+CustomEventInit.prototype = O.create(EventInit.prototype);
 
 //
 // Interface EventTarget
@@ -1262,6 +1268,20 @@ defineLazyProperty(idl, "DOMImplementation", function() {
             createHTMLDocument: function createHTMLDocument(title) {
                 var rv = unwrap(this).createHTMLDocument(String(title));
                 return wrap(rv, idl.Document);
+            },
+
+            mozSetOutputMutationHandler: function mozSetOutputMutationHandler(
+                                    doc,
+                                    handler)
+            {
+                return unwrap(this).mozSetOutputMutationHandler(
+                    unwrap(doc),
+                    toCallback(handler));
+            },
+
+            mozGetInputMutationHandler: function mozGetInputMutationHandler(doc) {
+                var rv = unwrap(this).mozGetInputMutationHandler(unwrap(doc));
+                return wrap(rv, idl.MozMutationHandler);
             },
 
         },
@@ -1787,6 +1807,4164 @@ defineLazyProperty(idl, "AttrArray", function() {
 
 
 /************************************************************************
+ *  src/htmlelts.js
+ ************************************************************************/
+
+//@line 1 "src/htmlelts.js"
+//
+// DO NOT EDIT.
+// This file was generated by idl2domjs from src/htmlelts.idl
+//
+
+
+//
+// Interface HTMLFormControlsCollection
+//
+
+defineLazyProperty(global, "HTMLFormControlsCollection", function() {
+    return idl.HTMLFormControlsCollection.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLFormControlsCollection", function() {
+    return new IDLInterface({
+        name: "HTMLFormControlsCollection",
+        superclass: idl.HTMLCollection,
+        proxyFactory: HTMLFormControlsCollectionProxy,
+        members: {
+            namedItem: function namedItem(name) {
+                return unwrap(this).namedItem(String(name));
+            },
+
+        },
+    });
+});
+
+//
+// Interface RadioNodeList
+//
+
+defineLazyProperty(global, "RadioNodeList", function() {
+    return idl.RadioNodeList.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "RadioNodeList", function() {
+    return new IDLInterface({
+        name: "RadioNodeList",
+        superclass: idl.NodeList,
+        members: {
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLOptionsCollection
+//
+
+defineLazyProperty(global, "HTMLOptionsCollection", function() {
+    return idl.HTMLOptionsCollection.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLOptionsCollection", function() {
+    return new IDLInterface({
+        name: "HTMLOptionsCollection",
+        superclass: idl.HTMLCollection,
+        proxyFactory: HTMLOptionsCollectionProxy,
+        members: {
+            get length() {
+                return unwrap(this).length;
+            },
+            set length(newval) {
+                unwrap(this).length = toULong(newval);
+            },
+
+            namedItem: function namedItem(name) {
+                return unwrap(this).namedItem(String(name));
+            },
+
+            remove: function remove(index) {
+                return unwrap(this).remove(toLong(index));
+            },
+
+            get selectedIndex() {
+                return unwrap(this).selectedIndex;
+            },
+            set selectedIndex(newval) {
+                unwrap(this).selectedIndex = toLong(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLPropertiesCollection
+//
+
+defineLazyProperty(global, "HTMLPropertiesCollection", function() {
+    return idl.HTMLPropertiesCollection.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLPropertiesCollection", function() {
+    return new IDLInterface({
+        name: "HTMLPropertiesCollection",
+        superclass: idl.HTMLCollection,
+        proxyFactory: HTMLPropertiesCollectionProxy,
+        members: {
+            namedItem: function namedItem(name) {
+                var rv = unwrap(this).namedItem(String(name));
+                return wrap(rv, idl.PropertyNodeList);
+            },
+
+            get names() {
+                return wrap(unwrap(this).names, idl.DOMStringList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface PropertyNodeList
+//
+
+defineLazyProperty(global, "PropertyNodeList", function() {
+    return idl.PropertyNodeList.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "PropertyNodeList", function() {
+    return new IDLInterface({
+        name: "PropertyNodeList",
+        superclass: idl.NodeList,
+        members: {
+            getValues: function getValues() {
+                var rv = unwrap(this).getValues();
+                return wrap(rv, idl.PropertyValueArray);
+            },
+
+        },
+    });
+});
+
+//
+// Interface DOMStringMap
+//
+
+defineLazyProperty(global, "DOMStringMap", function() {
+    return idl.DOMStringMap.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "DOMStringMap", function() {
+    return new IDLInterface({
+        name: "DOMStringMap",
+        proxyFactory: DOMStringMapProxy,
+        members: {
+        },
+    });
+});
+
+//
+// Interface DOMElementMap
+//
+
+defineLazyProperty(global, "DOMElementMap", function() {
+    return idl.DOMElementMap.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "DOMElementMap", function() {
+    return new IDLInterface({
+        name: "DOMElementMap",
+        proxyFactory: DOMElementMapProxy,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLElement
+//
+
+defineLazyProperty(global, "HTMLElement", function() {
+    return idl.HTMLElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLElement", function() {
+    return new IDLInterface({
+        name: "HTMLElement",
+        superclass: idl.Element,
+        members: {
+            get innerHTML() {
+                return unwrap(this).innerHTML;
+            },
+            set innerHTML(newval) {
+                unwrap(this).innerHTML = String(newval);
+            },
+
+            get outerHTML() {
+                return unwrap(this).outerHTML;
+            },
+            set outerHTML(newval) {
+                unwrap(this).outerHTML = String(newval);
+            },
+
+            insertAdjacentHTML: function insertAdjacentHTML(
+                                    position,
+                                    text)
+            {
+                return unwrap(this).insertAdjacentHTML(
+                    String(position),
+                    String(text));
+            },
+
+            get id() {
+                return unwrap(this).id;
+            },
+            set id(newval) {
+                unwrap(this).id = String(newval);
+            },
+
+            get title() {
+                return unwrap(this).title;
+            },
+            set title(newval) {
+                unwrap(this).title = String(newval);
+            },
+
+            get lang() {
+                return unwrap(this).lang;
+            },
+            set lang(newval) {
+                unwrap(this).lang = String(newval);
+            },
+
+            get dir() {
+                return unwrap(this).dir;
+            },
+            set dir(newval) {
+                unwrap(this).dir = String(newval);
+            },
+
+            get className() {
+                return unwrap(this).className;
+            },
+            set className(newval) {
+                unwrap(this).className = String(newval);
+            },
+
+            get classList() {
+                return wrap(unwrap(this).classList, idl.DOMTokenList);
+            },
+
+            get dataset() {
+                return wrap(unwrap(this).dataset, idl.DOMStringMap);
+            },
+
+            get itemScope() {
+                return unwrap(this).itemScope;
+            },
+            set itemScope(newval) {
+                unwrap(this).itemScope = Boolean(newval);
+            },
+
+            get itemType() {
+                return unwrap(this).itemType;
+            },
+            set itemType(newval) {
+                unwrap(this).itemType = String(newval);
+            },
+
+            get itemId() {
+                return unwrap(this).itemId;
+            },
+            set itemId(newval) {
+                unwrap(this).itemId = String(newval);
+            },
+
+            get itemRef() {
+                return wrap(unwrap(this).itemRef, idl.DOMSettableTokenList);
+            },
+
+            get itemProp() {
+                return wrap(unwrap(this).itemProp, idl.DOMSettableTokenList);
+            },
+
+            get properties() {
+                return wrap(unwrap(this).properties, idl.HTMLPropertiesCollection);
+            },
+
+            get itemValue() {
+                return unwrap(this).itemValue;
+            },
+            set itemValue(newval) {
+                unwrap(this).itemValue = newval;
+            },
+
+            get hidden() {
+                return unwrap(this).hidden;
+            },
+            set hidden(newval) {
+                unwrap(this).hidden = Boolean(newval);
+            },
+
+            click: function click() {
+                return unwrap(this).click();
+            },
+
+            get tabIndex() {
+                return unwrap(this).tabIndex;
+            },
+            set tabIndex(newval) {
+                unwrap(this).tabIndex = toLong(newval);
+            },
+
+            focus: function focus() {
+                return unwrap(this).focus();
+            },
+
+            blur: function blur() {
+                return unwrap(this).blur();
+            },
+
+            get accessKey() {
+                return unwrap(this).accessKey;
+            },
+            set accessKey(newval) {
+                unwrap(this).accessKey = String(newval);
+            },
+
+            get accessKeyLabel() {
+                return unwrap(this).accessKeyLabel;
+            },
+
+            get draggable() {
+                return unwrap(this).draggable;
+            },
+            set draggable(newval) {
+                unwrap(this).draggable = Boolean(newval);
+            },
+
+            get dropzone() {
+                return wrap(unwrap(this).dropzone, idl.DOMSettableTokenList);
+            },
+
+            get contentEditable() {
+                return unwrap(this).contentEditable;
+            },
+            set contentEditable(newval) {
+                unwrap(this).contentEditable = String(newval);
+            },
+
+            get isContentEditable() {
+                return unwrap(this).isContentEditable;
+            },
+
+            get contextMenu() {
+                return wrap(unwrap(this).contextMenu, idl.HTMLMenuElement);
+            },
+            set contextMenu(newval) {
+                unwrap(this).contextMenu = unwrapOrNull(newval);
+            },
+
+            get spellcheck() {
+                return unwrap(this).spellcheck;
+            },
+            set spellcheck(newval) {
+                unwrap(this).spellcheck = Boolean(newval);
+            },
+
+            get commandType() {
+                return unwrap(this).commandType;
+            },
+
+            get commandLabel() {
+                return unwrap(this).commandLabel;
+            },
+
+            get commandIcon() {
+                return unwrap(this).commandIcon;
+            },
+
+            get commandHidden() {
+                return unwrap(this).commandHidden;
+            },
+
+            get commandDisabled() {
+                return unwrap(this).commandDisabled;
+            },
+
+            get commandChecked() {
+                return unwrap(this).commandChecked;
+            },
+
+            get style() {
+                return wrap(unwrap(this).style, idl.CSSStyleDeclaration);
+            },
+
+            get onabort() {
+                return wrap(unwrap(this).onabort, idl.Function);
+            },
+            set onabort(newval) {
+                unwrap(this).onabort = toCallbackOrNull(newval);
+            },
+
+            get onblur() {
+                return wrap(unwrap(this).onblur, idl.Function);
+            },
+            set onblur(newval) {
+                unwrap(this).onblur = toCallbackOrNull(newval);
+            },
+
+            get oncanplay() {
+                return wrap(unwrap(this).oncanplay, idl.Function);
+            },
+            set oncanplay(newval) {
+                unwrap(this).oncanplay = toCallbackOrNull(newval);
+            },
+
+            get oncanplaythrough() {
+                return wrap(unwrap(this).oncanplaythrough, idl.Function);
+            },
+            set oncanplaythrough(newval) {
+                unwrap(this).oncanplaythrough = toCallbackOrNull(newval);
+            },
+
+            get onchange() {
+                return wrap(unwrap(this).onchange, idl.Function);
+            },
+            set onchange(newval) {
+                unwrap(this).onchange = toCallbackOrNull(newval);
+            },
+
+            get onclick() {
+                return wrap(unwrap(this).onclick, idl.Function);
+            },
+            set onclick(newval) {
+                unwrap(this).onclick = toCallbackOrNull(newval);
+            },
+
+            get oncontextmenu() {
+                return wrap(unwrap(this).oncontextmenu, idl.Function);
+            },
+            set oncontextmenu(newval) {
+                unwrap(this).oncontextmenu = toCallbackOrNull(newval);
+            },
+
+            get oncuechange() {
+                return wrap(unwrap(this).oncuechange, idl.Function);
+            },
+            set oncuechange(newval) {
+                unwrap(this).oncuechange = toCallbackOrNull(newval);
+            },
+
+            get ondblclick() {
+                return wrap(unwrap(this).ondblclick, idl.Function);
+            },
+            set ondblclick(newval) {
+                unwrap(this).ondblclick = toCallbackOrNull(newval);
+            },
+
+            get ondrag() {
+                return wrap(unwrap(this).ondrag, idl.Function);
+            },
+            set ondrag(newval) {
+                unwrap(this).ondrag = toCallbackOrNull(newval);
+            },
+
+            get ondragend() {
+                return wrap(unwrap(this).ondragend, idl.Function);
+            },
+            set ondragend(newval) {
+                unwrap(this).ondragend = toCallbackOrNull(newval);
+            },
+
+            get ondragenter() {
+                return wrap(unwrap(this).ondragenter, idl.Function);
+            },
+            set ondragenter(newval) {
+                unwrap(this).ondragenter = toCallbackOrNull(newval);
+            },
+
+            get ondragleave() {
+                return wrap(unwrap(this).ondragleave, idl.Function);
+            },
+            set ondragleave(newval) {
+                unwrap(this).ondragleave = toCallbackOrNull(newval);
+            },
+
+            get ondragover() {
+                return wrap(unwrap(this).ondragover, idl.Function);
+            },
+            set ondragover(newval) {
+                unwrap(this).ondragover = toCallbackOrNull(newval);
+            },
+
+            get ondragstart() {
+                return wrap(unwrap(this).ondragstart, idl.Function);
+            },
+            set ondragstart(newval) {
+                unwrap(this).ondragstart = toCallbackOrNull(newval);
+            },
+
+            get ondrop() {
+                return wrap(unwrap(this).ondrop, idl.Function);
+            },
+            set ondrop(newval) {
+                unwrap(this).ondrop = toCallbackOrNull(newval);
+            },
+
+            get ondurationchange() {
+                return wrap(unwrap(this).ondurationchange, idl.Function);
+            },
+            set ondurationchange(newval) {
+                unwrap(this).ondurationchange = toCallbackOrNull(newval);
+            },
+
+            get onemptied() {
+                return wrap(unwrap(this).onemptied, idl.Function);
+            },
+            set onemptied(newval) {
+                unwrap(this).onemptied = toCallbackOrNull(newval);
+            },
+
+            get onended() {
+                return wrap(unwrap(this).onended, idl.Function);
+            },
+            set onended(newval) {
+                unwrap(this).onended = toCallbackOrNull(newval);
+            },
+
+            get onerror() {
+                return wrap(unwrap(this).onerror, idl.Function);
+            },
+            set onerror(newval) {
+                unwrap(this).onerror = toCallbackOrNull(newval);
+            },
+
+            get onfocus() {
+                return wrap(unwrap(this).onfocus, idl.Function);
+            },
+            set onfocus(newval) {
+                unwrap(this).onfocus = toCallbackOrNull(newval);
+            },
+
+            get oninput() {
+                return wrap(unwrap(this).oninput, idl.Function);
+            },
+            set oninput(newval) {
+                unwrap(this).oninput = toCallbackOrNull(newval);
+            },
+
+            get oninvalid() {
+                return wrap(unwrap(this).oninvalid, idl.Function);
+            },
+            set oninvalid(newval) {
+                unwrap(this).oninvalid = toCallbackOrNull(newval);
+            },
+
+            get onkeydown() {
+                return wrap(unwrap(this).onkeydown, idl.Function);
+            },
+            set onkeydown(newval) {
+                unwrap(this).onkeydown = toCallbackOrNull(newval);
+            },
+
+            get onkeypress() {
+                return wrap(unwrap(this).onkeypress, idl.Function);
+            },
+            set onkeypress(newval) {
+                unwrap(this).onkeypress = toCallbackOrNull(newval);
+            },
+
+            get onkeyup() {
+                return wrap(unwrap(this).onkeyup, idl.Function);
+            },
+            set onkeyup(newval) {
+                unwrap(this).onkeyup = toCallbackOrNull(newval);
+            },
+
+            get onload() {
+                return wrap(unwrap(this).onload, idl.Function);
+            },
+            set onload(newval) {
+                unwrap(this).onload = toCallbackOrNull(newval);
+            },
+
+            get onloadeddata() {
+                return wrap(unwrap(this).onloadeddata, idl.Function);
+            },
+            set onloadeddata(newval) {
+                unwrap(this).onloadeddata = toCallbackOrNull(newval);
+            },
+
+            get onloadedmetadata() {
+                return wrap(unwrap(this).onloadedmetadata, idl.Function);
+            },
+            set onloadedmetadata(newval) {
+                unwrap(this).onloadedmetadata = toCallbackOrNull(newval);
+            },
+
+            get onloadstart() {
+                return wrap(unwrap(this).onloadstart, idl.Function);
+            },
+            set onloadstart(newval) {
+                unwrap(this).onloadstart = toCallbackOrNull(newval);
+            },
+
+            get onmousedown() {
+                return wrap(unwrap(this).onmousedown, idl.Function);
+            },
+            set onmousedown(newval) {
+                unwrap(this).onmousedown = toCallbackOrNull(newval);
+            },
+
+            get onmousemove() {
+                return wrap(unwrap(this).onmousemove, idl.Function);
+            },
+            set onmousemove(newval) {
+                unwrap(this).onmousemove = toCallbackOrNull(newval);
+            },
+
+            get onmouseout() {
+                return wrap(unwrap(this).onmouseout, idl.Function);
+            },
+            set onmouseout(newval) {
+                unwrap(this).onmouseout = toCallbackOrNull(newval);
+            },
+
+            get onmouseover() {
+                return wrap(unwrap(this).onmouseover, idl.Function);
+            },
+            set onmouseover(newval) {
+                unwrap(this).onmouseover = toCallbackOrNull(newval);
+            },
+
+            get onmouseup() {
+                return wrap(unwrap(this).onmouseup, idl.Function);
+            },
+            set onmouseup(newval) {
+                unwrap(this).onmouseup = toCallbackOrNull(newval);
+            },
+
+            get onmousewheel() {
+                return wrap(unwrap(this).onmousewheel, idl.Function);
+            },
+            set onmousewheel(newval) {
+                unwrap(this).onmousewheel = toCallbackOrNull(newval);
+            },
+
+            get onpause() {
+                return wrap(unwrap(this).onpause, idl.Function);
+            },
+            set onpause(newval) {
+                unwrap(this).onpause = toCallbackOrNull(newval);
+            },
+
+            get onplay() {
+                return wrap(unwrap(this).onplay, idl.Function);
+            },
+            set onplay(newval) {
+                unwrap(this).onplay = toCallbackOrNull(newval);
+            },
+
+            get onplaying() {
+                return wrap(unwrap(this).onplaying, idl.Function);
+            },
+            set onplaying(newval) {
+                unwrap(this).onplaying = toCallbackOrNull(newval);
+            },
+
+            get onprogress() {
+                return wrap(unwrap(this).onprogress, idl.Function);
+            },
+            set onprogress(newval) {
+                unwrap(this).onprogress = toCallbackOrNull(newval);
+            },
+
+            get onratechange() {
+                return wrap(unwrap(this).onratechange, idl.Function);
+            },
+            set onratechange(newval) {
+                unwrap(this).onratechange = toCallbackOrNull(newval);
+            },
+
+            get onreadystatechange() {
+                return wrap(unwrap(this).onreadystatechange, idl.Function);
+            },
+            set onreadystatechange(newval) {
+                unwrap(this).onreadystatechange = toCallbackOrNull(newval);
+            },
+
+            get onreset() {
+                return wrap(unwrap(this).onreset, idl.Function);
+            },
+            set onreset(newval) {
+                unwrap(this).onreset = toCallbackOrNull(newval);
+            },
+
+            get onscroll() {
+                return wrap(unwrap(this).onscroll, idl.Function);
+            },
+            set onscroll(newval) {
+                unwrap(this).onscroll = toCallbackOrNull(newval);
+            },
+
+            get onseeked() {
+                return wrap(unwrap(this).onseeked, idl.Function);
+            },
+            set onseeked(newval) {
+                unwrap(this).onseeked = toCallbackOrNull(newval);
+            },
+
+            get onseeking() {
+                return wrap(unwrap(this).onseeking, idl.Function);
+            },
+            set onseeking(newval) {
+                unwrap(this).onseeking = toCallbackOrNull(newval);
+            },
+
+            get onselect() {
+                return wrap(unwrap(this).onselect, idl.Function);
+            },
+            set onselect(newval) {
+                unwrap(this).onselect = toCallbackOrNull(newval);
+            },
+
+            get onshow() {
+                return wrap(unwrap(this).onshow, idl.Function);
+            },
+            set onshow(newval) {
+                unwrap(this).onshow = toCallbackOrNull(newval);
+            },
+
+            get onstalled() {
+                return wrap(unwrap(this).onstalled, idl.Function);
+            },
+            set onstalled(newval) {
+                unwrap(this).onstalled = toCallbackOrNull(newval);
+            },
+
+            get onsubmit() {
+                return wrap(unwrap(this).onsubmit, idl.Function);
+            },
+            set onsubmit(newval) {
+                unwrap(this).onsubmit = toCallbackOrNull(newval);
+            },
+
+            get onsuspend() {
+                return wrap(unwrap(this).onsuspend, idl.Function);
+            },
+            set onsuspend(newval) {
+                unwrap(this).onsuspend = toCallbackOrNull(newval);
+            },
+
+            get ontimeupdate() {
+                return wrap(unwrap(this).ontimeupdate, idl.Function);
+            },
+            set ontimeupdate(newval) {
+                unwrap(this).ontimeupdate = toCallbackOrNull(newval);
+            },
+
+            get onvolumechange() {
+                return wrap(unwrap(this).onvolumechange, idl.Function);
+            },
+            set onvolumechange(newval) {
+                unwrap(this).onvolumechange = toCallbackOrNull(newval);
+            },
+
+            get onwaiting() {
+                return wrap(unwrap(this).onwaiting, idl.Function);
+            },
+            set onwaiting(newval) {
+                unwrap(this).onwaiting = toCallbackOrNull(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLUnknownElement
+//
+
+defineLazyProperty(global, "HTMLUnknownElement", function() {
+    return idl.HTMLUnknownElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLUnknownElement", function() {
+    return new IDLInterface({
+        name: "HTMLUnknownElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLHtmlElement
+//
+
+defineLazyProperty(global, "HTMLHtmlElement", function() {
+    return idl.HTMLHtmlElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLHtmlElement", function() {
+    return new IDLInterface({
+        name: "HTMLHtmlElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLHeadElement
+//
+
+defineLazyProperty(global, "HTMLHeadElement", function() {
+    return idl.HTMLHeadElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLHeadElement", function() {
+    return new IDLInterface({
+        name: "HTMLHeadElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLTitleElement
+//
+
+defineLazyProperty(global, "HTMLTitleElement", function() {
+    return idl.HTMLTitleElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTitleElement", function() {
+    return new IDLInterface({
+        name: "HTMLTitleElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get text() {
+                return unwrap(this).text;
+            },
+            set text(newval) {
+                unwrap(this).text = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLBaseElement
+//
+
+defineLazyProperty(global, "HTMLBaseElement", function() {
+    return idl.HTMLBaseElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLBaseElement", function() {
+    return new IDLInterface({
+        name: "HTMLBaseElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get href() {
+                return unwrap(this).href;
+            },
+            set href(newval) {
+                unwrap(this).href = String(newval);
+            },
+
+            get target() {
+                return unwrap(this).target;
+            },
+            set target(newval) {
+                unwrap(this).target = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLLinkElement
+//
+
+defineLazyProperty(global, "HTMLLinkElement", function() {
+    return idl.HTMLLinkElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLLinkElement", function() {
+    return new IDLInterface({
+        name: "HTMLLinkElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get href() {
+                return unwrap(this).href;
+            },
+            set href(newval) {
+                unwrap(this).href = String(newval);
+            },
+
+            get rel() {
+                return unwrap(this).rel;
+            },
+            set rel(newval) {
+                unwrap(this).rel = String(newval);
+            },
+
+            get relList() {
+                return wrap(unwrap(this).relList, idl.DOMTokenList);
+            },
+
+            get media() {
+                return unwrap(this).media;
+            },
+            set media(newval) {
+                unwrap(this).media = String(newval);
+            },
+
+            get hreflang() {
+                return unwrap(this).hreflang;
+            },
+            set hreflang(newval) {
+                unwrap(this).hreflang = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get sizes() {
+                return wrap(unwrap(this).sizes, idl.DOMSettableTokenList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLMetaElement
+//
+
+defineLazyProperty(global, "HTMLMetaElement", function() {
+    return idl.HTMLMetaElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLMetaElement", function() {
+    return new IDLInterface({
+        name: "HTMLMetaElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get httpEquiv() {
+                return unwrap(this).httpEquiv;
+            },
+            set httpEquiv(newval) {
+                unwrap(this).httpEquiv = String(newval);
+            },
+
+            get content() {
+                return unwrap(this).content;
+            },
+            set content(newval) {
+                unwrap(this).content = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLStyleElement
+//
+
+defineLazyProperty(global, "HTMLStyleElement", function() {
+    return idl.HTMLStyleElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLStyleElement", function() {
+    return new IDLInterface({
+        name: "HTMLStyleElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get media() {
+                return unwrap(this).media;
+            },
+            set media(newval) {
+                unwrap(this).media = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get scoped() {
+                return unwrap(this).scoped;
+            },
+            set scoped(newval) {
+                unwrap(this).scoped = Boolean(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLScriptElement
+//
+
+defineLazyProperty(global, "HTMLScriptElement", function() {
+    return idl.HTMLScriptElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLScriptElement", function() {
+    return new IDLInterface({
+        name: "HTMLScriptElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get src() {
+                return unwrap(this).src;
+            },
+            set src(newval) {
+                unwrap(this).src = String(newval);
+            },
+
+            get async() {
+                return unwrap(this).async;
+            },
+            set async(newval) {
+                unwrap(this).async = Boolean(newval);
+            },
+
+            get defer() {
+                return unwrap(this).defer;
+            },
+            set defer(newval) {
+                unwrap(this).defer = Boolean(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get charset() {
+                return unwrap(this).charset;
+            },
+            set charset(newval) {
+                unwrap(this).charset = String(newval);
+            },
+
+            get text() {
+                return unwrap(this).text;
+            },
+            set text(newval) {
+                unwrap(this).text = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLBodyElement
+//
+
+defineLazyProperty(global, "HTMLBodyElement", function() {
+    return idl.HTMLBodyElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLBodyElement", function() {
+    return new IDLInterface({
+        name: "HTMLBodyElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get onafterprint() {
+                return wrap(unwrap(this).onafterprint, idl.Function);
+            },
+            set onafterprint(newval) {
+                unwrap(this).onafterprint = toCallbackOrNull(newval);
+            },
+
+            get onbeforeprint() {
+                return wrap(unwrap(this).onbeforeprint, idl.Function);
+            },
+            set onbeforeprint(newval) {
+                unwrap(this).onbeforeprint = toCallbackOrNull(newval);
+            },
+
+            get onbeforeunload() {
+                return wrap(unwrap(this).onbeforeunload, idl.Function);
+            },
+            set onbeforeunload(newval) {
+                unwrap(this).onbeforeunload = toCallbackOrNull(newval);
+            },
+
+            get onblur() {
+                return wrap(unwrap(this).onblur, idl.Function);
+            },
+            set onblur(newval) {
+                unwrap(this).onblur = toCallbackOrNull(newval);
+            },
+
+            get onerror() {
+                return wrap(unwrap(this).onerror, idl.Function);
+            },
+            set onerror(newval) {
+                unwrap(this).onerror = toCallbackOrNull(newval);
+            },
+
+            get onfocus() {
+                return wrap(unwrap(this).onfocus, idl.Function);
+            },
+            set onfocus(newval) {
+                unwrap(this).onfocus = toCallbackOrNull(newval);
+            },
+
+            get onhashchange() {
+                return wrap(unwrap(this).onhashchange, idl.Function);
+            },
+            set onhashchange(newval) {
+                unwrap(this).onhashchange = toCallbackOrNull(newval);
+            },
+
+            get onload() {
+                return wrap(unwrap(this).onload, idl.Function);
+            },
+            set onload(newval) {
+                unwrap(this).onload = toCallbackOrNull(newval);
+            },
+
+            get onmessage() {
+                return wrap(unwrap(this).onmessage, idl.Function);
+            },
+            set onmessage(newval) {
+                unwrap(this).onmessage = toCallbackOrNull(newval);
+            },
+
+            get onoffline() {
+                return wrap(unwrap(this).onoffline, idl.Function);
+            },
+            set onoffline(newval) {
+                unwrap(this).onoffline = toCallbackOrNull(newval);
+            },
+
+            get ononline() {
+                return wrap(unwrap(this).ononline, idl.Function);
+            },
+            set ononline(newval) {
+                unwrap(this).ononline = toCallbackOrNull(newval);
+            },
+
+            get onpopstate() {
+                return wrap(unwrap(this).onpopstate, idl.Function);
+            },
+            set onpopstate(newval) {
+                unwrap(this).onpopstate = toCallbackOrNull(newval);
+            },
+
+            get onpagehide() {
+                return wrap(unwrap(this).onpagehide, idl.Function);
+            },
+            set onpagehide(newval) {
+                unwrap(this).onpagehide = toCallbackOrNull(newval);
+            },
+
+            get onpageshow() {
+                return wrap(unwrap(this).onpageshow, idl.Function);
+            },
+            set onpageshow(newval) {
+                unwrap(this).onpageshow = toCallbackOrNull(newval);
+            },
+
+            get onredo() {
+                return wrap(unwrap(this).onredo, idl.Function);
+            },
+            set onredo(newval) {
+                unwrap(this).onredo = toCallbackOrNull(newval);
+            },
+
+            get onresize() {
+                return wrap(unwrap(this).onresize, idl.Function);
+            },
+            set onresize(newval) {
+                unwrap(this).onresize = toCallbackOrNull(newval);
+            },
+
+            get onscroll() {
+                return wrap(unwrap(this).onscroll, idl.Function);
+            },
+            set onscroll(newval) {
+                unwrap(this).onscroll = toCallbackOrNull(newval);
+            },
+
+            get onstorage() {
+                return wrap(unwrap(this).onstorage, idl.Function);
+            },
+            set onstorage(newval) {
+                unwrap(this).onstorage = toCallbackOrNull(newval);
+            },
+
+            get onundo() {
+                return wrap(unwrap(this).onundo, idl.Function);
+            },
+            set onundo(newval) {
+                unwrap(this).onundo = toCallbackOrNull(newval);
+            },
+
+            get onunload() {
+                return wrap(unwrap(this).onunload, idl.Function);
+            },
+            set onunload(newval) {
+                unwrap(this).onunload = toCallbackOrNull(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLHeadingElement
+//
+
+defineLazyProperty(global, "HTMLHeadingElement", function() {
+    return idl.HTMLHeadingElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLHeadingElement", function() {
+    return new IDLInterface({
+        name: "HTMLHeadingElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLParagraphElement
+//
+
+defineLazyProperty(global, "HTMLParagraphElement", function() {
+    return idl.HTMLParagraphElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLParagraphElement", function() {
+    return new IDLInterface({
+        name: "HTMLParagraphElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLHRElement
+//
+
+defineLazyProperty(global, "HTMLHRElement", function() {
+    return idl.HTMLHRElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLHRElement", function() {
+    return new IDLInterface({
+        name: "HTMLHRElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLPreElement
+//
+
+defineLazyProperty(global, "HTMLPreElement", function() {
+    return idl.HTMLPreElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLPreElement", function() {
+    return new IDLInterface({
+        name: "HTMLPreElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLQuoteElement
+//
+
+defineLazyProperty(global, "HTMLQuoteElement", function() {
+    return idl.HTMLQuoteElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLQuoteElement", function() {
+    return new IDLInterface({
+        name: "HTMLQuoteElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get cite() {
+                return unwrap(this).cite;
+            },
+            set cite(newval) {
+                unwrap(this).cite = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLOListElement
+//
+
+defineLazyProperty(global, "HTMLOListElement", function() {
+    return idl.HTMLOListElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLOListElement", function() {
+    return new IDLInterface({
+        name: "HTMLOListElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get reversed() {
+                return unwrap(this).reversed;
+            },
+            set reversed(newval) {
+                unwrap(this).reversed = Boolean(newval);
+            },
+
+            get start() {
+                return unwrap(this).start;
+            },
+            set start(newval) {
+                unwrap(this).start = toLong(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLUListElement
+//
+
+defineLazyProperty(global, "HTMLUListElement", function() {
+    return idl.HTMLUListElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLUListElement", function() {
+    return new IDLInterface({
+        name: "HTMLUListElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLLIElement
+//
+
+defineLazyProperty(global, "HTMLLIElement", function() {
+    return idl.HTMLLIElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLLIElement", function() {
+    return new IDLInterface({
+        name: "HTMLLIElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = toLong(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLDListElement
+//
+
+defineLazyProperty(global, "HTMLDListElement", function() {
+    return idl.HTMLDListElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLDListElement", function() {
+    return new IDLInterface({
+        name: "HTMLDListElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLDivElement
+//
+
+defineLazyProperty(global, "HTMLDivElement", function() {
+    return idl.HTMLDivElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLDivElement", function() {
+    return new IDLInterface({
+        name: "HTMLDivElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLAnchorElement
+//
+
+defineLazyProperty(global, "HTMLAnchorElement", function() {
+    return idl.HTMLAnchorElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLAnchorElement", function() {
+    return new IDLInterface({
+        name: "HTMLAnchorElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get href() {
+                return unwrap(this).href;
+            },
+            set href(newval) {
+                unwrap(this).href = String(newval);
+            },
+
+            get target() {
+                return unwrap(this).target;
+            },
+            set target(newval) {
+                unwrap(this).target = String(newval);
+            },
+
+            get download() {
+                return unwrap(this).download;
+            },
+            set download(newval) {
+                unwrap(this).download = String(newval);
+            },
+
+            get ping() {
+                return unwrap(this).ping;
+            },
+            set ping(newval) {
+                unwrap(this).ping = String(newval);
+            },
+
+            get rel() {
+                return unwrap(this).rel;
+            },
+            set rel(newval) {
+                unwrap(this).rel = String(newval);
+            },
+
+            get relList() {
+                return wrap(unwrap(this).relList, idl.DOMTokenList);
+            },
+
+            get media() {
+                return unwrap(this).media;
+            },
+            set media(newval) {
+                unwrap(this).media = String(newval);
+            },
+
+            get hreflang() {
+                return unwrap(this).hreflang;
+            },
+            set hreflang(newval) {
+                unwrap(this).hreflang = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get text() {
+                return unwrap(this).text;
+            },
+            set text(newval) {
+                unwrap(this).text = String(newval);
+            },
+
+            get protocol() {
+                return unwrap(this).protocol;
+            },
+            set protocol(newval) {
+                unwrap(this).protocol = String(newval);
+            },
+
+            get host() {
+                return unwrap(this).host;
+            },
+            set host(newval) {
+                unwrap(this).host = String(newval);
+            },
+
+            get hostname() {
+                return unwrap(this).hostname;
+            },
+            set hostname(newval) {
+                unwrap(this).hostname = String(newval);
+            },
+
+            get port() {
+                return unwrap(this).port;
+            },
+            set port(newval) {
+                unwrap(this).port = String(newval);
+            },
+
+            get pathname() {
+                return unwrap(this).pathname;
+            },
+            set pathname(newval) {
+                unwrap(this).pathname = String(newval);
+            },
+
+            get search() {
+                return unwrap(this).search;
+            },
+            set search(newval) {
+                unwrap(this).search = String(newval);
+            },
+
+            get hash() {
+                return unwrap(this).hash;
+            },
+            set hash(newval) {
+                unwrap(this).hash = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTimeElement
+//
+
+defineLazyProperty(global, "HTMLTimeElement", function() {
+    return idl.HTMLTimeElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTimeElement", function() {
+    return new IDLInterface({
+        name: "HTMLTimeElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get dateTime() {
+                return unwrap(this).dateTime;
+            },
+            set dateTime(newval) {
+                unwrap(this).dateTime = String(newval);
+            },
+
+            get pubDate() {
+                return unwrap(this).pubDate;
+            },
+            set pubDate(newval) {
+                unwrap(this).pubDate = Boolean(newval);
+            },
+
+            get valueAsDate() {
+                return wrap(unwrap(this).valueAsDate, idl.Date);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLSpanElement
+//
+
+defineLazyProperty(global, "HTMLSpanElement", function() {
+    return idl.HTMLSpanElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLSpanElement", function() {
+    return new IDLInterface({
+        name: "HTMLSpanElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLBRElement
+//
+
+defineLazyProperty(global, "HTMLBRElement", function() {
+    return idl.HTMLBRElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLBRElement", function() {
+    return new IDLInterface({
+        name: "HTMLBRElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLModElement
+//
+
+defineLazyProperty(global, "HTMLModElement", function() {
+    return idl.HTMLModElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLModElement", function() {
+    return new IDLInterface({
+        name: "HTMLModElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get cite() {
+                return unwrap(this).cite;
+            },
+            set cite(newval) {
+                unwrap(this).cite = String(newval);
+            },
+
+            get dateTime() {
+                return unwrap(this).dateTime;
+            },
+            set dateTime(newval) {
+                unwrap(this).dateTime = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLImageElement
+//
+
+defineLazyProperty(global, "HTMLImageElement", function() {
+    return idl.HTMLImageElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLImageElement", function() {
+    return new IDLInterface({
+        name: "HTMLImageElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get alt() {
+                return unwrap(this).alt;
+            },
+            set alt(newval) {
+                unwrap(this).alt = String(newval);
+            },
+
+            get src() {
+                return unwrap(this).src;
+            },
+            set src(newval) {
+                unwrap(this).src = String(newval);
+            },
+
+            get crossOrigin() {
+                return unwrap(this).crossOrigin;
+            },
+            set crossOrigin(newval) {
+                unwrap(this).crossOrigin = String(newval);
+            },
+
+            get useMap() {
+                return unwrap(this).useMap;
+            },
+            set useMap(newval) {
+                unwrap(this).useMap = String(newval);
+            },
+
+            get isMap() {
+                return unwrap(this).isMap;
+            },
+            set isMap(newval) {
+                unwrap(this).isMap = Boolean(newval);
+            },
+
+            get width() {
+                return unwrap(this).width;
+            },
+            set width(newval) {
+                unwrap(this).width = toULong(newval);
+            },
+
+            get height() {
+                return unwrap(this).height;
+            },
+            set height(newval) {
+                unwrap(this).height = toULong(newval);
+            },
+
+            get naturalWidth() {
+                return unwrap(this).naturalWidth;
+            },
+
+            get naturalHeight() {
+                return unwrap(this).naturalHeight;
+            },
+
+            get complete() {
+                return unwrap(this).complete;
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLIFrameElement
+//
+
+defineLazyProperty(global, "HTMLIFrameElement", function() {
+    return idl.HTMLIFrameElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLIFrameElement", function() {
+    return new IDLInterface({
+        name: "HTMLIFrameElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get src() {
+                return unwrap(this).src;
+            },
+            set src(newval) {
+                unwrap(this).src = String(newval);
+            },
+
+            get srcdoc() {
+                return unwrap(this).srcdoc;
+            },
+            set srcdoc(newval) {
+                unwrap(this).srcdoc = String(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get sandbox() {
+                return wrap(unwrap(this).sandbox, idl.DOMSettableTokenList);
+            },
+
+            get seamless() {
+                return unwrap(this).seamless;
+            },
+            set seamless(newval) {
+                unwrap(this).seamless = Boolean(newval);
+            },
+
+            get width() {
+                return unwrap(this).width;
+            },
+            set width(newval) {
+                unwrap(this).width = String(newval);
+            },
+
+            get height() {
+                return unwrap(this).height;
+            },
+            set height(newval) {
+                unwrap(this).height = String(newval);
+            },
+
+            get contentDocument() {
+                return wrap(unwrap(this).contentDocument, idl.Document);
+            },
+
+            get contentWindow() {
+                return wrap(unwrap(this).contentWindow, idl.WindowProxy);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLEmbedElement
+//
+
+defineLazyProperty(global, "HTMLEmbedElement", function() {
+    return idl.HTMLEmbedElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLEmbedElement", function() {
+    return new IDLInterface({
+        name: "HTMLEmbedElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get src() {
+                return unwrap(this).src;
+            },
+            set src(newval) {
+                unwrap(this).src = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get width() {
+                return unwrap(this).width;
+            },
+            set width(newval) {
+                unwrap(this).width = String(newval);
+            },
+
+            get height() {
+                return unwrap(this).height;
+            },
+            set height(newval) {
+                unwrap(this).height = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLObjectElement
+//
+
+defineLazyProperty(global, "HTMLObjectElement", function() {
+    return idl.HTMLObjectElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLObjectElement", function() {
+    return new IDLInterface({
+        name: "HTMLObjectElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get data() {
+                return unwrap(this).data;
+            },
+            set data(newval) {
+                unwrap(this).data = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get typeMustMatch() {
+                return unwrap(this).typeMustMatch;
+            },
+            set typeMustMatch(newval) {
+                unwrap(this).typeMustMatch = Boolean(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get useMap() {
+                return unwrap(this).useMap;
+            },
+            set useMap(newval) {
+                unwrap(this).useMap = String(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get width() {
+                return unwrap(this).width;
+            },
+            set width(newval) {
+                unwrap(this).width = String(newval);
+            },
+
+            get height() {
+                return unwrap(this).height;
+            },
+            set height(newval) {
+                unwrap(this).height = String(newval);
+            },
+
+            get contentDocument() {
+                return wrap(unwrap(this).contentDocument, idl.Document);
+            },
+
+            get contentWindow() {
+                return wrap(unwrap(this).contentWindow, idl.WindowProxy);
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLParamElement
+//
+
+defineLazyProperty(global, "HTMLParamElement", function() {
+    return idl.HTMLParamElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLParamElement", function() {
+    return new IDLInterface({
+        name: "HTMLParamElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLVideoElement
+//
+
+defineLazyProperty(global, "HTMLVideoElement", function() {
+    return idl.HTMLVideoElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLVideoElement", function() {
+    return new IDLInterface({
+        name: "HTMLVideoElement",
+        superclass: idl.HTMLMediaElement,
+        members: {
+            get width() {
+                return unwrap(this).width;
+            },
+            set width(newval) {
+                unwrap(this).width = toULong(newval);
+            },
+
+            get height() {
+                return unwrap(this).height;
+            },
+            set height(newval) {
+                unwrap(this).height = toULong(newval);
+            },
+
+            get videoWidth() {
+                return unwrap(this).videoWidth;
+            },
+
+            get videoHeight() {
+                return unwrap(this).videoHeight;
+            },
+
+            get poster() {
+                return unwrap(this).poster;
+            },
+            set poster(newval) {
+                unwrap(this).poster = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLAudioElement
+//
+
+defineLazyProperty(global, "HTMLAudioElement", function() {
+    return idl.HTMLAudioElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLAudioElement", function() {
+    return new IDLInterface({
+        name: "HTMLAudioElement",
+        superclass: idl.HTMLMediaElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLSourceElement
+//
+
+defineLazyProperty(global, "HTMLSourceElement", function() {
+    return idl.HTMLSourceElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLSourceElement", function() {
+    return new IDLInterface({
+        name: "HTMLSourceElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get src() {
+                return unwrap(this).src;
+            },
+            set src(newval) {
+                unwrap(this).src = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get media() {
+                return unwrap(this).media;
+            },
+            set media(newval) {
+                unwrap(this).media = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTrackElement
+//
+
+defineLazyProperty(global, "HTMLTrackElement", function() {
+    return idl.HTMLTrackElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTrackElement", function() {
+    return new IDLInterface({
+        name: "HTMLTrackElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get kind() {
+                return unwrap(this).kind;
+            },
+            set kind(newval) {
+                unwrap(this).kind = String(newval);
+            },
+
+            get src() {
+                return unwrap(this).src;
+            },
+            set src(newval) {
+                unwrap(this).src = String(newval);
+            },
+
+            get srclang() {
+                return unwrap(this).srclang;
+            },
+            set srclang(newval) {
+                unwrap(this).srclang = String(newval);
+            },
+
+            get label() {
+                return unwrap(this).label;
+            },
+            set label(newval) {
+                unwrap(this).label = String(newval);
+            },
+
+            /*get default() {
+                return unwrap(this).default;
+            },
+            set default(newval) {
+                unwrap(this).default = Boolean(newval);
+            },*/
+
+            get track() {
+                return wrap(unwrap(this).track, idl.TextTrack);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLMapElement
+//
+
+defineLazyProperty(global, "HTMLMapElement", function() {
+    return idl.HTMLMapElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLMapElement", function() {
+    return new IDLInterface({
+        name: "HTMLMapElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get areas() {
+                return wrap(unwrap(this).areas, idl.HTMLCollection);
+            },
+
+            get images() {
+                return wrap(unwrap(this).images, idl.HTMLCollection);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLAreaElement
+//
+
+defineLazyProperty(global, "HTMLAreaElement", function() {
+    return idl.HTMLAreaElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLAreaElement", function() {
+    return new IDLInterface({
+        name: "HTMLAreaElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get alt() {
+                return unwrap(this).alt;
+            },
+            set alt(newval) {
+                unwrap(this).alt = String(newval);
+            },
+
+            get coords() {
+                return unwrap(this).coords;
+            },
+            set coords(newval) {
+                unwrap(this).coords = String(newval);
+            },
+
+            get shape() {
+                return unwrap(this).shape;
+            },
+            set shape(newval) {
+                unwrap(this).shape = String(newval);
+            },
+
+            get href() {
+                return unwrap(this).href;
+            },
+            set href(newval) {
+                unwrap(this).href = String(newval);
+            },
+
+            get target() {
+                return unwrap(this).target;
+            },
+            set target(newval) {
+                unwrap(this).target = String(newval);
+            },
+
+            get download() {
+                return unwrap(this).download;
+            },
+            set download(newval) {
+                unwrap(this).download = String(newval);
+            },
+
+            get ping() {
+                return unwrap(this).ping;
+            },
+            set ping(newval) {
+                unwrap(this).ping = String(newval);
+            },
+
+            get rel() {
+                return unwrap(this).rel;
+            },
+            set rel(newval) {
+                unwrap(this).rel = String(newval);
+            },
+
+            get relList() {
+                return wrap(unwrap(this).relList, idl.DOMTokenList);
+            },
+
+            get media() {
+                return unwrap(this).media;
+            },
+            set media(newval) {
+                unwrap(this).media = String(newval);
+            },
+
+            get hreflang() {
+                return unwrap(this).hreflang;
+            },
+            set hreflang(newval) {
+                unwrap(this).hreflang = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get protocol() {
+                return unwrap(this).protocol;
+            },
+            set protocol(newval) {
+                unwrap(this).protocol = String(newval);
+            },
+
+            get host() {
+                return unwrap(this).host;
+            },
+            set host(newval) {
+                unwrap(this).host = String(newval);
+            },
+
+            get hostname() {
+                return unwrap(this).hostname;
+            },
+            set hostname(newval) {
+                unwrap(this).hostname = String(newval);
+            },
+
+            get port() {
+                return unwrap(this).port;
+            },
+            set port(newval) {
+                unwrap(this).port = String(newval);
+            },
+
+            get pathname() {
+                return unwrap(this).pathname;
+            },
+            set pathname(newval) {
+                unwrap(this).pathname = String(newval);
+            },
+
+            get search() {
+                return unwrap(this).search;
+            },
+            set search(newval) {
+                unwrap(this).search = String(newval);
+            },
+
+            get hash() {
+                return unwrap(this).hash;
+            },
+            set hash(newval) {
+                unwrap(this).hash = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTableElement
+//
+
+defineLazyProperty(global, "HTMLTableElement", function() {
+    return idl.HTMLTableElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get caption() {
+                return wrap(unwrap(this).caption, idl.HTMLTableCaptionElement);
+            },
+            set caption(newval) {
+                unwrap(this).caption = unwrapOrNull(newval);
+            },
+
+            createCaption: function createCaption() {
+                var rv = unwrap(this).createCaption();
+                return wrap(rv, idl.HTMLElement);
+            },
+
+            deleteCaption: function deleteCaption() {
+                return unwrap(this).deleteCaption();
+            },
+
+            get tHead() {
+                return wrap(unwrap(this).tHead, idl.HTMLTableSectionElement);
+            },
+            set tHead(newval) {
+                unwrap(this).tHead = unwrapOrNull(newval);
+            },
+
+            createTHead: function createTHead() {
+                var rv = unwrap(this).createTHead();
+                return wrap(rv, idl.HTMLElement);
+            },
+
+            deleteTHead: function deleteTHead() {
+                return unwrap(this).deleteTHead();
+            },
+
+            get tFoot() {
+                return wrap(unwrap(this).tFoot, idl.HTMLTableSectionElement);
+            },
+            set tFoot(newval) {
+                unwrap(this).tFoot = unwrapOrNull(newval);
+            },
+
+            createTFoot: function createTFoot() {
+                var rv = unwrap(this).createTFoot();
+                return wrap(rv, idl.HTMLElement);
+            },
+
+            deleteTFoot: function deleteTFoot() {
+                return unwrap(this).deleteTFoot();
+            },
+
+            get tBodies() {
+                return wrap(unwrap(this).tBodies, idl.HTMLCollection);
+            },
+
+            createTBody: function createTBody() {
+                var rv = unwrap(this).createTBody();
+                return wrap(rv, idl.HTMLElement);
+            },
+
+            get rows() {
+                return wrap(unwrap(this).rows, idl.HTMLCollection);
+            },
+
+            insertRow: function insertRow(index) {
+                var rv = unwrap(this).insertRow(OptionaltoLong(index));
+                return wrap(rv, idl.HTMLElement);
+            },
+
+            deleteRow: function deleteRow(index) {
+                return unwrap(this).deleteRow(toLong(index));
+            },
+
+            get border() {
+                return unwrap(this).border;
+            },
+            set border(newval) {
+                unwrap(this).border = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTableCaptionElement
+//
+
+defineLazyProperty(global, "HTMLTableCaptionElement", function() {
+    return idl.HTMLTableCaptionElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableCaptionElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableCaptionElement",
+        superclass: idl.HTMLElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLTableColElement
+//
+
+defineLazyProperty(global, "HTMLTableColElement", function() {
+    return idl.HTMLTableColElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableColElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableColElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get span() {
+                return unwrap(this).span;
+            },
+            set span(newval) {
+                unwrap(this).span = toULong(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTableSectionElement
+//
+
+defineLazyProperty(global, "HTMLTableSectionElement", function() {
+    return idl.HTMLTableSectionElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableSectionElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableSectionElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get rows() {
+                return wrap(unwrap(this).rows, idl.HTMLCollection);
+            },
+
+            insertRow: function insertRow(index) {
+                var rv = unwrap(this).insertRow(OptionaltoLong(index));
+                return wrap(rv, idl.HTMLElement);
+            },
+
+            deleteRow: function deleteRow(index) {
+                return unwrap(this).deleteRow(toLong(index));
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTableRowElement
+//
+
+defineLazyProperty(global, "HTMLTableRowElement", function() {
+    return idl.HTMLTableRowElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableRowElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableRowElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get rowIndex() {
+                return unwrap(this).rowIndex;
+            },
+
+            get sectionRowIndex() {
+                return unwrap(this).sectionRowIndex;
+            },
+
+            get cells() {
+                return wrap(unwrap(this).cells, idl.HTMLCollection);
+            },
+
+            insertCell: function insertCell(index) {
+                var rv = unwrap(this).insertCell(OptionaltoLong(index));
+                return wrap(rv, idl.HTMLElement);
+            },
+
+            deleteCell: function deleteCell(index) {
+                return unwrap(this).deleteCell(toLong(index));
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTableDataCellElement
+//
+
+defineLazyProperty(global, "HTMLTableDataCellElement", function() {
+    return idl.HTMLTableDataCellElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableDataCellElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableDataCellElement",
+        superclass: idl.HTMLTableCellElement,
+        members: {
+        },
+    });
+});
+
+//
+// Interface HTMLTableHeaderCellElement
+//
+
+defineLazyProperty(global, "HTMLTableHeaderCellElement", function() {
+    return idl.HTMLTableHeaderCellElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableHeaderCellElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableHeaderCellElement",
+        superclass: idl.HTMLTableCellElement,
+        members: {
+            get scope() {
+                return unwrap(this).scope;
+            },
+            set scope(newval) {
+                unwrap(this).scope = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTableCellElement
+//
+
+defineLazyProperty(global, "HTMLTableCellElement", function() {
+    return idl.HTMLTableCellElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTableCellElement", function() {
+    return new IDLInterface({
+        name: "HTMLTableCellElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get colSpan() {
+                return unwrap(this).colSpan;
+            },
+            set colSpan(newval) {
+                unwrap(this).colSpan = toULong(newval);
+            },
+
+            get rowSpan() {
+                return unwrap(this).rowSpan;
+            },
+            set rowSpan(newval) {
+                unwrap(this).rowSpan = toULong(newval);
+            },
+
+            get headers() {
+                return wrap(unwrap(this).headers, idl.DOMSettableTokenList);
+            },
+
+            get cellIndex() {
+                return unwrap(this).cellIndex;
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLFormElement
+//
+
+defineLazyProperty(global, "HTMLFormElement", function() {
+    return idl.HTMLFormElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLFormElement", function() {
+    return new IDLInterface({
+        name: "HTMLFormElement",
+        superclass: idl.HTMLElement,
+        proxyFactory: HTMLFormElementProxy,
+        members: {
+            get acceptCharset() {
+                return unwrap(this).acceptCharset;
+            },
+            set acceptCharset(newval) {
+                unwrap(this).acceptCharset = String(newval);
+            },
+
+            get action() {
+                return unwrap(this).action;
+            },
+            set action(newval) {
+                unwrap(this).action = String(newval);
+            },
+
+            get autocomplete() {
+                return unwrap(this).autocomplete;
+            },
+            set autocomplete(newval) {
+                unwrap(this).autocomplete = String(newval);
+            },
+
+            get enctype() {
+                return unwrap(this).enctype;
+            },
+            set enctype(newval) {
+                unwrap(this).enctype = String(newval);
+            },
+
+            get encoding() {
+                return unwrap(this).encoding;
+            },
+            set encoding(newval) {
+                unwrap(this).encoding = String(newval);
+            },
+
+            get method() {
+                return unwrap(this).method;
+            },
+            set method(newval) {
+                unwrap(this).method = String(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get noValidate() {
+                return unwrap(this).noValidate;
+            },
+            set noValidate(newval) {
+                unwrap(this).noValidate = Boolean(newval);
+            },
+
+            get target() {
+                return unwrap(this).target;
+            },
+            set target(newval) {
+                unwrap(this).target = String(newval);
+            },
+
+            get elements() {
+                return wrap(unwrap(this).elements, idl.HTMLFormControlsCollection);
+            },
+
+            get length() {
+                return unwrap(this).length;
+            },
+
+            submit: function submit() {
+                return unwrap(this).submit();
+            },
+
+            reset: function reset() {
+                return unwrap(this).reset();
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLFieldSetElement
+//
+
+defineLazyProperty(global, "HTMLFieldSetElement", function() {
+    return idl.HTMLFieldSetElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLFieldSetElement", function() {
+    return new IDLInterface({
+        name: "HTMLFieldSetElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+
+            get elements() {
+                return wrap(unwrap(this).elements, idl.HTMLFormControlsCollection);
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLLegendElement
+//
+
+defineLazyProperty(global, "HTMLLegendElement", function() {
+    return idl.HTMLLegendElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLLegendElement", function() {
+    return new IDLInterface({
+        name: "HTMLLegendElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLLabelElement
+//
+
+defineLazyProperty(global, "HTMLLabelElement", function() {
+    return idl.HTMLLabelElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLLabelElement", function() {
+    return new IDLInterface({
+        name: "HTMLLabelElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get htmlFor() {
+                return unwrap(this).htmlFor;
+            },
+            set htmlFor(newval) {
+                unwrap(this).htmlFor = String(newval);
+            },
+
+            get control() {
+                return wrap(unwrap(this).control, idl.HTMLElement);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLInputElement
+//
+
+defineLazyProperty(global, "HTMLInputElement", function() {
+    return idl.HTMLInputElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLInputElement", function() {
+    return new IDLInterface({
+        name: "HTMLInputElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get accept() {
+                return unwrap(this).accept;
+            },
+            set accept(newval) {
+                unwrap(this).accept = String(newval);
+            },
+
+            get alt() {
+                return unwrap(this).alt;
+            },
+            set alt(newval) {
+                unwrap(this).alt = String(newval);
+            },
+
+            get autocomplete() {
+                return unwrap(this).autocomplete;
+            },
+            set autocomplete(newval) {
+                unwrap(this).autocomplete = String(newval);
+            },
+
+            get autofocus() {
+                return unwrap(this).autofocus;
+            },
+            set autofocus(newval) {
+                unwrap(this).autofocus = Boolean(newval);
+            },
+
+            get defaultChecked() {
+                return unwrap(this).defaultChecked;
+            },
+            set defaultChecked(newval) {
+                unwrap(this).defaultChecked = Boolean(newval);
+            },
+
+            get checked() {
+                return unwrap(this).checked;
+            },
+            set checked(newval) {
+                unwrap(this).checked = Boolean(newval);
+            },
+
+            get dirName() {
+                return unwrap(this).dirName;
+            },
+            set dirName(newval) {
+                unwrap(this).dirName = String(newval);
+            },
+
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get files() {
+                return wrap(unwrap(this).files, idl.FileList);
+            },
+
+            get formAction() {
+                return unwrap(this).formAction;
+            },
+            set formAction(newval) {
+                unwrap(this).formAction = String(newval);
+            },
+
+            get formEnctype() {
+                return unwrap(this).formEnctype;
+            },
+            set formEnctype(newval) {
+                unwrap(this).formEnctype = String(newval);
+            },
+
+            get formMethod() {
+                return unwrap(this).formMethod;
+            },
+            set formMethod(newval) {
+                unwrap(this).formMethod = String(newval);
+            },
+
+            get formNoValidate() {
+                return unwrap(this).formNoValidate;
+            },
+            set formNoValidate(newval) {
+                unwrap(this).formNoValidate = Boolean(newval);
+            },
+
+            get formTarget() {
+                return unwrap(this).formTarget;
+            },
+            set formTarget(newval) {
+                unwrap(this).formTarget = String(newval);
+            },
+
+            get height() {
+                return unwrap(this).height;
+            },
+            set height(newval) {
+                unwrap(this).height = String(newval);
+            },
+
+            get indeterminate() {
+                return unwrap(this).indeterminate;
+            },
+            set indeterminate(newval) {
+                unwrap(this).indeterminate = Boolean(newval);
+            },
+
+            get list() {
+                return wrap(unwrap(this).list, idl.HTMLElement);
+            },
+
+            get max() {
+                return unwrap(this).max;
+            },
+            set max(newval) {
+                unwrap(this).max = String(newval);
+            },
+
+            get maxLength() {
+                return unwrap(this).maxLength;
+            },
+            set maxLength(newval) {
+                unwrap(this).maxLength = toLong(newval);
+            },
+
+            get min() {
+                return unwrap(this).min;
+            },
+            set min(newval) {
+                unwrap(this).min = String(newval);
+            },
+
+            get multiple() {
+                return unwrap(this).multiple;
+            },
+            set multiple(newval) {
+                unwrap(this).multiple = Boolean(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get pattern() {
+                return unwrap(this).pattern;
+            },
+            set pattern(newval) {
+                unwrap(this).pattern = String(newval);
+            },
+
+            get placeholder() {
+                return unwrap(this).placeholder;
+            },
+            set placeholder(newval) {
+                unwrap(this).placeholder = String(newval);
+            },
+
+            get readOnly() {
+                return unwrap(this).readOnly;
+            },
+            set readOnly(newval) {
+                unwrap(this).readOnly = Boolean(newval);
+            },
+
+            get required() {
+                return unwrap(this).required;
+            },
+            set required(newval) {
+                unwrap(this).required = Boolean(newval);
+            },
+
+            get size() {
+                return unwrap(this).size;
+            },
+            set size(newval) {
+                unwrap(this).size = toULong(newval);
+            },
+
+            get src() {
+                return unwrap(this).src;
+            },
+            set src(newval) {
+                unwrap(this).src = String(newval);
+            },
+
+            get step() {
+                return unwrap(this).step;
+            },
+            set step(newval) {
+                unwrap(this).step = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get defaultValue() {
+                return unwrap(this).defaultValue;
+            },
+            set defaultValue(newval) {
+                unwrap(this).defaultValue = String(newval);
+            },
+
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+            get valueAsDate() {
+                return wrap(unwrap(this).valueAsDate, idl.Date);
+            },
+            set valueAsDate(newval) {
+                unwrap(this).valueAsDate = unwrap(newval);
+            },
+
+            get valueAsNumber() {
+                return unwrap(this).valueAsNumber;
+            },
+            set valueAsNumber(newval) {
+                unwrap(this).valueAsNumber = Number(newval);
+            },
+
+            get selectedOption() {
+                return wrap(unwrap(this).selectedOption, idl.HTMLOptionElement);
+            },
+
+            get width() {
+                return unwrap(this).width;
+            },
+            set width(newval) {
+                unwrap(this).width = String(newval);
+            },
+
+            stepUp: function stepUp(n) {
+                return unwrap(this).stepUp(OptionaltoLong(n));
+            },
+
+            stepDown: function stepDown(n) {
+                return unwrap(this).stepDown(OptionaltoLong(n));
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+            select: function select() {
+                return unwrap(this).select();
+            },
+
+            get selectionStart() {
+                return unwrap(this).selectionStart;
+            },
+            set selectionStart(newval) {
+                unwrap(this).selectionStart = toULong(newval);
+            },
+
+            get selectionEnd() {
+                return unwrap(this).selectionEnd;
+            },
+            set selectionEnd(newval) {
+                unwrap(this).selectionEnd = toULong(newval);
+            },
+
+            get selectionDirection() {
+                return unwrap(this).selectionDirection;
+            },
+            set selectionDirection(newval) {
+                unwrap(this).selectionDirection = String(newval);
+            },
+
+            setSelectionRange: function setSelectionRange(
+                                    start,
+                                    end,
+                                    direction)
+            {
+                return unwrap(this).setSelectionRange(
+                    toULong(start),
+                    toULong(end),
+                    OptionalString(direction));
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLButtonElement
+//
+
+defineLazyProperty(global, "HTMLButtonElement", function() {
+    return idl.HTMLButtonElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLButtonElement", function() {
+    return new IDLInterface({
+        name: "HTMLButtonElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get autofocus() {
+                return unwrap(this).autofocus;
+            },
+            set autofocus(newval) {
+                unwrap(this).autofocus = Boolean(newval);
+            },
+
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get formAction() {
+                return unwrap(this).formAction;
+            },
+            set formAction(newval) {
+                unwrap(this).formAction = String(newval);
+            },
+
+            get formEnctype() {
+                return unwrap(this).formEnctype;
+            },
+            set formEnctype(newval) {
+                unwrap(this).formEnctype = String(newval);
+            },
+
+            get formMethod() {
+                return unwrap(this).formMethod;
+            },
+            set formMethod(newval) {
+                unwrap(this).formMethod = String(newval);
+            },
+
+            get formNoValidate() {
+                return unwrap(this).formNoValidate;
+            },
+            set formNoValidate(newval) {
+                unwrap(this).formNoValidate = String(newval);
+            },
+
+            get formTarget() {
+                return unwrap(this).formTarget;
+            },
+            set formTarget(newval) {
+                unwrap(this).formTarget = String(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLSelectElement
+//
+
+defineLazyProperty(global, "HTMLSelectElement", function() {
+    return idl.HTMLSelectElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLSelectElement", function() {
+    return new IDLInterface({
+        name: "HTMLSelectElement",
+        superclass: idl.HTMLElement,
+        proxyFactory: HTMLSelectElementProxy,
+        members: {
+            get autofocus() {
+                return unwrap(this).autofocus;
+            },
+            set autofocus(newval) {
+                unwrap(this).autofocus = Boolean(newval);
+            },
+
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get multiple() {
+                return unwrap(this).multiple;
+            },
+            set multiple(newval) {
+                unwrap(this).multiple = Boolean(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get required() {
+                return unwrap(this).required;
+            },
+            set required(newval) {
+                unwrap(this).required = Boolean(newval);
+            },
+
+            get size() {
+                return unwrap(this).size;
+            },
+            set size(newval) {
+                unwrap(this).size = toULong(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+
+            get options() {
+                return wrap(unwrap(this).options, idl.HTMLOptionsCollection);
+            },
+
+            get length() {
+                return unwrap(this).length;
+            },
+            set length(newval) {
+                unwrap(this).length = toULong(newval);
+            },
+
+            item: function item(index) {
+                return unwrap(this).item(toULong(index));
+            },
+
+            namedItem: function namedItem(name) {
+                return unwrap(this).namedItem(String(name));
+            },
+
+            remove: function remove(index) {
+                return unwrap(this).remove(toLong(index));
+            },
+
+            get selectedOptions() {
+                return wrap(unwrap(this).selectedOptions, idl.HTMLCollection);
+            },
+
+            get selectedIndex() {
+                return unwrap(this).selectedIndex;
+            },
+            set selectedIndex(newval) {
+                unwrap(this).selectedIndex = toLong(newval);
+            },
+
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLDataListElement
+//
+
+defineLazyProperty(global, "HTMLDataListElement", function() {
+    return idl.HTMLDataListElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLDataListElement", function() {
+    return new IDLInterface({
+        name: "HTMLDataListElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get options() {
+                return wrap(unwrap(this).options, idl.HTMLCollection);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLOptGroupElement
+//
+
+defineLazyProperty(global, "HTMLOptGroupElement", function() {
+    return idl.HTMLOptGroupElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLOptGroupElement", function() {
+    return new IDLInterface({
+        name: "HTMLOptGroupElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get label() {
+                return unwrap(this).label;
+            },
+            set label(newval) {
+                unwrap(this).label = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLOptionElement
+//
+
+defineLazyProperty(global, "HTMLOptionElement", function() {
+    return idl.HTMLOptionElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLOptionElement", function() {
+    return new IDLInterface({
+        name: "HTMLOptionElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get label() {
+                return unwrap(this).label;
+            },
+            set label(newval) {
+                unwrap(this).label = String(newval);
+            },
+
+            get defaultSelected() {
+                return unwrap(this).defaultSelected;
+            },
+            set defaultSelected(newval) {
+                unwrap(this).defaultSelected = Boolean(newval);
+            },
+
+            get selected() {
+                return unwrap(this).selected;
+            },
+            set selected(newval) {
+                unwrap(this).selected = Boolean(newval);
+            },
+
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+            get text() {
+                return unwrap(this).text;
+            },
+            set text(newval) {
+                unwrap(this).text = String(newval);
+            },
+
+            get index() {
+                return unwrap(this).index;
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLTextAreaElement
+//
+
+defineLazyProperty(global, "HTMLTextAreaElement", function() {
+    return idl.HTMLTextAreaElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLTextAreaElement", function() {
+    return new IDLInterface({
+        name: "HTMLTextAreaElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get autofocus() {
+                return unwrap(this).autofocus;
+            },
+            set autofocus(newval) {
+                unwrap(this).autofocus = Boolean(newval);
+            },
+
+            get cols() {
+                return unwrap(this).cols;
+            },
+            set cols(newval) {
+                unwrap(this).cols = toULong(newval);
+            },
+
+            get dirName() {
+                return unwrap(this).dirName;
+            },
+            set dirName(newval) {
+                unwrap(this).dirName = String(newval);
+            },
+
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get maxLength() {
+                return unwrap(this).maxLength;
+            },
+            set maxLength(newval) {
+                unwrap(this).maxLength = toLong(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get placeholder() {
+                return unwrap(this).placeholder;
+            },
+            set placeholder(newval) {
+                unwrap(this).placeholder = String(newval);
+            },
+
+            get readOnly() {
+                return unwrap(this).readOnly;
+            },
+            set readOnly(newval) {
+                unwrap(this).readOnly = Boolean(newval);
+            },
+
+            get required() {
+                return unwrap(this).required;
+            },
+            set required(newval) {
+                unwrap(this).required = Boolean(newval);
+            },
+
+            get rows() {
+                return unwrap(this).rows;
+            },
+            set rows(newval) {
+                unwrap(this).rows = toULong(newval);
+            },
+
+            get wrap() {
+                return unwrap(this).wrap;
+            },
+            set wrap(newval) {
+                unwrap(this).wrap = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+
+            get defaultValue() {
+                return unwrap(this).defaultValue;
+            },
+            set defaultValue(newval) {
+                unwrap(this).defaultValue = String(newval);
+            },
+
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+            get textLength() {
+                return unwrap(this).textLength;
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+            select: function select() {
+                return unwrap(this).select();
+            },
+
+            get selectionStart() {
+                return unwrap(this).selectionStart;
+            },
+            set selectionStart(newval) {
+                unwrap(this).selectionStart = toULong(newval);
+            },
+
+            get selectionEnd() {
+                return unwrap(this).selectionEnd;
+            },
+            set selectionEnd(newval) {
+                unwrap(this).selectionEnd = toULong(newval);
+            },
+
+            get selectionDirection() {
+                return unwrap(this).selectionDirection;
+            },
+            set selectionDirection(newval) {
+                unwrap(this).selectionDirection = String(newval);
+            },
+
+            setSelectionRange: function setSelectionRange(
+                                    start,
+                                    end,
+                                    direction)
+            {
+                return unwrap(this).setSelectionRange(
+                    toULong(start),
+                    toULong(end),
+                    OptionalString(direction));
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLKeygenElement
+//
+
+defineLazyProperty(global, "HTMLKeygenElement", function() {
+    return idl.HTMLKeygenElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLKeygenElement", function() {
+    return new IDLInterface({
+        name: "HTMLKeygenElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get autofocus() {
+                return unwrap(this).autofocus;
+            },
+            set autofocus(newval) {
+                unwrap(this).autofocus = Boolean(newval);
+            },
+
+            get challenge() {
+                return unwrap(this).challenge;
+            },
+            set challenge(newval) {
+                unwrap(this).challenge = String(newval);
+            },
+
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get keytype() {
+                return unwrap(this).keytype;
+            },
+            set keytype(newval) {
+                unwrap(this).keytype = String(newval);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLOutputElement
+//
+
+defineLazyProperty(global, "HTMLOutputElement", function() {
+    return idl.HTMLOutputElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLOutputElement", function() {
+    return new IDLInterface({
+        name: "HTMLOutputElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get htmlFor() {
+                return wrap(unwrap(this).htmlFor, idl.DOMSettableTokenList);
+            },
+
+            get form() {
+                return wrap(unwrap(this).form, idl.HTMLFormElement);
+            },
+
+            get name() {
+                return unwrap(this).name;
+            },
+            set name(newval) {
+                unwrap(this).name = String(newval);
+            },
+
+            get type() {
+                return unwrap(this).type;
+            },
+
+            get defaultValue() {
+                return unwrap(this).defaultValue;
+            },
+            set defaultValue(newval) {
+                unwrap(this).defaultValue = String(newval);
+            },
+
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = String(newval);
+            },
+
+            get willValidate() {
+                return unwrap(this).willValidate;
+            },
+
+            get validity() {
+                return wrap(unwrap(this).validity, idl.ValidityState);
+            },
+
+            get validationMessage() {
+                return unwrap(this).validationMessage;
+            },
+
+            checkValidity: function checkValidity() {
+                return unwrap(this).checkValidity();
+            },
+
+            setCustomValidity: function setCustomValidity(error) {
+                return unwrap(this).setCustomValidity(String(error));
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLProgressElement
+//
+
+defineLazyProperty(global, "HTMLProgressElement", function() {
+    return idl.HTMLProgressElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLProgressElement", function() {
+    return new IDLInterface({
+        name: "HTMLProgressElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = Number(newval);
+            },
+
+            get max() {
+                return unwrap(this).max;
+            },
+            set max(newval) {
+                unwrap(this).max = Number(newval);
+            },
+
+            get position() {
+                return unwrap(this).position;
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLMeterElement
+//
+
+defineLazyProperty(global, "HTMLMeterElement", function() {
+    return idl.HTMLMeterElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLMeterElement", function() {
+    return new IDLInterface({
+        name: "HTMLMeterElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get value() {
+                return unwrap(this).value;
+            },
+            set value(newval) {
+                unwrap(this).value = Number(newval);
+            },
+
+            get min() {
+                return unwrap(this).min;
+            },
+            set min(newval) {
+                unwrap(this).min = Number(newval);
+            },
+
+            get max() {
+                return unwrap(this).max;
+            },
+            set max(newval) {
+                unwrap(this).max = Number(newval);
+            },
+
+            get low() {
+                return unwrap(this).low;
+            },
+            set low(newval) {
+                unwrap(this).low = Number(newval);
+            },
+
+            get high() {
+                return unwrap(this).high;
+            },
+            set high(newval) {
+                unwrap(this).high = Number(newval);
+            },
+
+            get optimum() {
+                return unwrap(this).optimum;
+            },
+            set optimum(newval) {
+                unwrap(this).optimum = Number(newval);
+            },
+
+            get labels() {
+                return wrap(unwrap(this).labels, idl.NodeList);
+            },
+
+        },
+    });
+});
+
+//
+// Interface ValidityState
+//
+
+defineLazyProperty(global, "ValidityState", function() {
+    return idl.ValidityState.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "ValidityState", function() {
+    return new IDLInterface({
+        name: "ValidityState",
+        members: {
+            get valueMissing() {
+                return unwrap(this).valueMissing;
+            },
+
+            get typeMismatch() {
+                return unwrap(this).typeMismatch;
+            },
+
+            get patternMismatch() {
+                return unwrap(this).patternMismatch;
+            },
+
+            get tooLong() {
+                return unwrap(this).tooLong;
+            },
+
+            get rangeUnderflow() {
+                return unwrap(this).rangeUnderflow;
+            },
+
+            get rangeOverflow() {
+                return unwrap(this).rangeOverflow;
+            },
+
+            get stepMismatch() {
+                return unwrap(this).stepMismatch;
+            },
+
+            get customError() {
+                return unwrap(this).customError;
+            },
+
+            get valid() {
+                return unwrap(this).valid;
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLDetailsElement
+//
+
+defineLazyProperty(global, "HTMLDetailsElement", function() {
+    return idl.HTMLDetailsElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLDetailsElement", function() {
+    return new IDLInterface({
+        name: "HTMLDetailsElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get open() {
+                return unwrap(this).open;
+            },
+            set open(newval) {
+                unwrap(this).open = Boolean(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLCommandElement
+//
+
+defineLazyProperty(global, "HTMLCommandElement", function() {
+    return idl.HTMLCommandElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLCommandElement", function() {
+    return new IDLInterface({
+        name: "HTMLCommandElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get label() {
+                return unwrap(this).label;
+            },
+            set label(newval) {
+                unwrap(this).label = String(newval);
+            },
+
+            get icon() {
+                return unwrap(this).icon;
+            },
+            set icon(newval) {
+                unwrap(this).icon = String(newval);
+            },
+
+            get disabled() {
+                return unwrap(this).disabled;
+            },
+            set disabled(newval) {
+                unwrap(this).disabled = Boolean(newval);
+            },
+
+            get checked() {
+                return unwrap(this).checked;
+            },
+            set checked(newval) {
+                unwrap(this).checked = Boolean(newval);
+            },
+
+            get radiogroup() {
+                return unwrap(this).radiogroup;
+            },
+            set radiogroup(newval) {
+                unwrap(this).radiogroup = String(newval);
+            },
+
+        },
+    });
+});
+
+//
+// Interface HTMLMenuElement
+//
+
+defineLazyProperty(global, "HTMLMenuElement", function() {
+    return idl.HTMLMenuElement.publicInterface;
+}, true);
+
+defineLazyProperty(idl, "HTMLMenuElement", function() {
+    return new IDLInterface({
+        name: "HTMLMenuElement",
+        superclass: idl.HTMLElement,
+        members: {
+            get type() {
+                return unwrap(this).type;
+            },
+            set type(newval) {
+                unwrap(this).type = String(newval);
+            },
+
+            get label() {
+                return unwrap(this).label;
+            },
+            set label(newval) {
+                unwrap(this).label = String(newval);
+            },
+
+        },
+    });
+});
+
+
+
+/************************************************************************
  *  src/ArrayProxy.js
  ************************************************************************/
 
@@ -1798,7 +5976,7 @@ defineLazyProperty(idl, "AttrArray", function() {
 // See the end of the file for custom constructors for specific element types
 // 
 function ArrayProxy(elementType, array) {
-    var handler = Object.create(ArrayProxy.handler);
+    var handler = O.create(ArrayProxy.handler);
     handler.elementType = elementType;  
     handler.array = array;
     handler.localprops = O.create(null);
@@ -2299,7 +6477,7 @@ global.DOMException = (function() {
         e.__proto__ = DOMException.prototype;
 */
 
-        var e = Object.create(DOMException.prototype);
+        var e = O.create(DOMException.prototype);
         e.code = code;
         e.message = messages[code];
         e.name = names[code];
@@ -2317,7 +6495,7 @@ global.DOMException = (function() {
         return e;
     }
 
-    DOMException.prototype = Object.create(Error.prototype);
+    DOMException.prototype = O.create(Error.prototype);
 
     // Initialize the constants on DOMException and DOMException.prototype
     for(var c in constants) {
@@ -2365,7 +6543,7 @@ function DataCloneError() { throw DOMException(DATA_CLONE_ERR); }
 defineLazyProperty(impl, "EventTarget", function() {
     function EventTarget() {}
 
-    EventTarget.prototype = Object.create(Object.prototype, {
+    EventTarget.prototype = O.create(Object.prototype, {
 
         // XXX
         // See WebIDL §4.8 for details on object event handlers
@@ -2515,7 +6693,15 @@ defineLazyProperty(impl, "Node", function() {
     function Node() {
     }
 
-    Node.prototype = Object.create(impl.EventTarget.prototype, {
+    Node.prototype = O.create(impl.EventTarget.prototype, {
+
+        // Node that are not inserted into the tree inherit a null parent
+        // XXX
+        // Can't use constant(null) here because then I couldn't set a non-null
+        // value that would override the inherited constant.  Perhaps that 
+        // means I shouldn't use the prototype and should just set the
+        // value in each node constructor?
+        parentNode: { value: null, writable: true },
         
         // XXX: the baseURI attribute is defined by dom core, but 
         // a correct implementation of it requires HTML features, so 
@@ -2596,7 +6782,8 @@ defineLazyProperty(impl, "Node", function() {
 
             var refChild = oldChild.nextSibling;
             oldChild.remove();
-            return parent.insertBefore(newChild, refChild);
+            parent.insertBefore(newChild, refChild);
+            return oldChild;
         }),
 
         compareDocumentPosition:constant(function compareDocumentPosition(that){
@@ -2613,7 +6800,7 @@ defineLazyProperty(impl, "Node", function() {
             // If they're not owned by the same document or if one is rooted
             // and one is not, then they're disconnected.
             if (this.ownerDocument != that.ownerDocument ||
-                this.root !== that.root)
+                this.rooted !== that.rooted)
                 return (DOCUMENT_POSITION_DISCONNECTED +
                         DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC);
 
@@ -2765,7 +6952,7 @@ defineLazyProperty(impl, "Node", function() {
             // If they belong to different documents, then they're unrelated.
             if (this.ownerDocument != that.ownerDocument) return false;
             // If one is rooted and one isn't then they're not related
-            if (this.root !== that.root) return false;
+            if (this.rooted !== that.rooted) return false;
 
             // Otherwise check by traversing the parentNode chain
             for(var e = that; e; e = e.parentNode) {
@@ -2827,13 +7014,13 @@ defineLazyProperty(impl, "Node", function() {
             delete this.parentNode;
 
             // Send mutation events if necessary
-            if (this.root) this.root.mutateRemove(this);
+            if (this.rooted) this.ownerDocument.mutateRemove(this);
         }),
 
         // Remove all of this node's children.  This is a minor 
         // optimization that only calls modify() once.
         removeChildren: constant(function removeChildren() {
-            var root = this.root;
+            var root = this.rooted ? this.ownerDocument : null;
             for(var i = 0, n = this.childNodes.length; i < n; i++) {
                 delete this.childNodes[i].parentNode;
                 if (root) root.mutateRemove(this.childNodes[i]);
@@ -2847,6 +7034,20 @@ defineLazyProperty(impl, "Node", function() {
         insert: constant(function insert(parent, index) {
             var child = this, kids = parent.childNodes;
 
+            // If we are already a child of the specified parent, then t
+            // the index may have to be adjusted.
+            if (child.parentNode === parent) {
+                var currentIndex = child.index;
+                // If we're not moving the node, we're done now
+                // XXX: or do DOM mutation events still have to be fired?
+                if (currentIndex === index) return;
+
+                // If the child is before the spot it is to be inserted at,
+                // then when it is removed, the index of that spot will be
+                // reduced.
+                if (currentIndex < index) index--;
+            }
+
             // Special case for document fragments
             if (child.nodeType === DOCUMENT_FRAGMENT_NODE) {
                 var  c;
@@ -2857,7 +7058,7 @@ defineLazyProperty(impl, "Node", function() {
 
             // If both the child and the parent are rooted, then we want to
             // transplant the child without uprooting and rerooting it.
-            if (child.root && parent.root) {
+            if (child.rooted && parent.rooted) {
                 // Remove the child from its current position in the tree
                 // without calling remove(), since we don't want to uproot it.
                 var curpar = child.parentNode, curidx = child.index;
@@ -2885,7 +7086,7 @@ defineLazyProperty(impl, "Node", function() {
                 child._index = index;              // Optimization
                 
                 // And root the child if necessary
-                if (parent.root) parent.root.mutateInsert(child);
+                if (parent.rooted) parent.ownerDocument.mutateInsert(child);
             }
         }),
 
@@ -2897,8 +7098,9 @@ defineLazyProperty(impl, "Node", function() {
         // time; it is simply a counter incremented on each document
         // modification)
         lastModified: attribute(function() {
-            if (!this._lastModified)
+            if (!this._lastModified) {
                 this._lastModified = this.doc.modclock;
+            }
                 
             return this._lastModified;
         }),
@@ -2913,9 +7115,11 @@ defineLazyProperty(impl, "Node", function() {
         // _lastModified property.
         modify: constant(function() {
             var time = ++this.doc.modclock;
-            for(var n = this; n; n = n.parentElement)
-                if (n._lastModified) n._lastModified = time;
-
+            for(var n = this; n; n = n.parentElement) {
+                if (n._lastModified) {
+                    n._lastModified = time;
+                }
+            }
         }),
 
         // This attribute is not part of the DOM but is quite helpful.
@@ -2925,8 +7129,13 @@ defineLazyProperty(impl, "Node", function() {
         // regardless of the node type
         doc: attribute(function() {
             return this.ownerDocument || this;
-        })
+        }),
 
+
+        // If the node has a nid (node id), then it is rooted in a document
+        rooted: attribute(function() {
+            return !!this._nid;
+        }),
 
     });
 
@@ -2944,7 +7153,7 @@ defineLazyProperty(impl, "Leaf", function() {
     // can never have children
     function Leaf() {}
 
-    Leaf.prototype = Object.create(impl.Node.prototype, {
+    Leaf.prototype = O.create(impl.Node.prototype, {
         hasChildNodes: constant(function() { return false; }),
         firstChild: constant(null),
         lastChild: constant(null),
@@ -2980,7 +7189,7 @@ defineLazyProperty(impl, "CharacterData", function() {
     function CharacterData() {
     }
     
-    CharacterData.prototype = Object.create(impl.Leaf.prototype, {
+    CharacterData.prototype = O.create(impl.Leaf.prototype, {
         // DOMString substringData(unsigned long offset,
         //                         unsigned long count);
         // The substringData(offset, count) method must run these steps:
@@ -3104,11 +7313,11 @@ defineLazyProperty(impl, "Text", function() {
     var nodeValue = attribute(function() { return this._data; },
                               function(v) { 
                                   this._data = v;
-                                  if (this.root)
-                                      this.root.mutateValue(this);
+                                  if (this.rooted)
+                                      this.ownerDocument.mutateValue(this);
                               });
     
-    Text.prototype = Object.create(impl.CharacterData.prototype, {
+    Text.prototype = O.create(impl.CharacterData.prototype, {
         nodeType: constant(TEXT_NODE),
         nodeName: constant("#text"),
         // These three attributes are all the same.
@@ -3143,6 +7352,10 @@ defineLazyProperty(impl, "Text", function() {
         clone: constant(function clone() {
             return new impl.Text(this.ownerDocument, this._data);
         }),
+
+        toObject: constant(function toObject() {
+            return { type: TEXT_NODE, data: this._data };
+        }),
      
     });
 
@@ -3164,11 +7377,11 @@ defineLazyProperty(impl, "Comment", function() {
     var nodeValue = attribute(function() { return this._data; },
                               function(v) { 
                                   this._data = v;
-                                  if (this.root)
-                                      this.root.mutateValue(this);
+                                  if (this.rooted)
+                                      this.ownerDocument.mutateValue(this);
                               });
     
-    Comment.prototype = Object.create(impl.CharacterData.prototype, {
+    Comment.prototype = O.create(impl.CharacterData.prototype, {
         nodeType: constant(COMMENT_NODE),
         nodeName: constant("#comment"),
         nodeValue: nodeValue,
@@ -3179,6 +7392,9 @@ defineLazyProperty(impl, "Comment", function() {
         // Utility methods
         clone: constant(function clone() {
             return new impl.Comment(this.ownerDocument, this._data);
+        }),
+        toObject: constant(function toObject() {
+            return { type: COMMENT_NODE, data: this._data };
         }),
     });
     
@@ -3202,11 +7418,11 @@ defineLazyProperty(impl, "ProcessingInstruction", function() {
     var nodeValue = attribute(function() { return this._data; },
                               function(v) { 
                                   this._data = v;
-                                  if (this.root)
-                                      this.root.mutateValue(this);
+                                  if (this.rooted)
+                                      this.ownerDocument.mutateValue(this);
                               });
 
-    ProcessingInstruction.prototype = Object.create(impl.Leaf.prototype, {
+    ProcessingInstruction.prototype = O.create(impl.Leaf.prototype, {
         nodeType: constant(PROCESSING_INSTRUCTION_NODE),
         nodeName: attribute(function() { return this.target; }),
         nodeValue: nodeValue,
@@ -3220,6 +7436,13 @@ defineLazyProperty(impl, "ProcessingInstruction", function() {
         }),
         isEqual: constant(function isEqual(n) {
             return this.target === n.target && this._data === n._data;
+        }),
+        toObject: constant(function toObject() {
+            return {
+                type: PROCESSING_INSTRUCTION_NODE,
+                target: this.target,
+                data: this._data
+            };
         }),
 
     });
@@ -3268,7 +7491,7 @@ defineLazyProperty(impl, "Element", function() {
         }
     }
 
-    Element.prototype = Object.create(impl.Node.prototype, {
+    Element.prototype = O.create(impl.Node.prototype, {
         nodeType: constant(ELEMENT_NODE),
         nodeName: attribute(function() { return this.tagName; }),
         nodeValue: attribute(fnull, fnoop),
@@ -3312,7 +7535,7 @@ defineLazyProperty(impl, "Element", function() {
             push(this.attributes, newattr);
 
             // Send mutation event
-            if (this.root) this.root.mutateAddAttr(newattr);
+            if (this.rooted) this.ownerDocument.mutateAttr(newattr, null);
         }),
 
         removeAttribute: constant(function removeAttribute(qname) {
@@ -3329,7 +7552,7 @@ defineLazyProperty(impl, "Element", function() {
                         this.modify();
                     
                     // Mutation event
-                    if (this.root) this.root.mutateRemoveAttr(attr);
+                    if (this.rooted) this.ownerDocument.mutateRemoveAttr(attr);
                     return;
                 }
             }
@@ -3395,7 +7618,7 @@ defineLazyProperty(impl, "Element", function() {
             }
             var newattr = new impl.Attr(this, lname, value, prefix, ns)
             push(this.attributes, newattr);
-            if (this.root) this.root.mutateAddAttr(newattr);
+            if (this.rooted) this.ownerDocument.mutateAddAttr(newattr);
         }),
 
 
@@ -3411,7 +7634,7 @@ defineLazyProperty(impl, "Element", function() {
                         (lname === "id"||lname === "class"||lname === "name"))
                         this.modify();
 
-                    if (this.root) this.root.mutateRemoveAttr(attr);
+                    if (this.rooted) this.ownerDocument.mutateRemoveAttr(attr);
                     return;
                 }
             }
@@ -3475,7 +7698,6 @@ defineLazyProperty(impl, "Element", function() {
             var next = this.firstElementChild || this.nextElementSibling;
             if (next) return next;
 
-            // XXX: still need to implement Document.documentElement
             if (!root) root = this.ownerDocument.documentElement;
 
             // If we can't go down or across, then we have to go up
@@ -3536,6 +7758,21 @@ defineLazyProperty(impl, "Element", function() {
 
             return true;
         }),
+
+        toObject: constant(function toObject() {
+            var obj= {
+                type: ELEMENT_NODE,
+                name: this.localName,
+                ns: this.namespaceURI,
+                prefix: this.prefix
+            };
+
+            // Hmmm...  Should I do this recursively and include children?
+            // XXX: define a separate library for serializing and parsing
+            // trees of nodes.  Don't use JSON or HTML: they are too hard
+            // to parse
+        }),
+
 
         // This is the "locate a namespace prefix" algorithm from the
         // DOMCore specification.  It is used by Node.lookupPrefix()
@@ -3664,13 +7901,15 @@ defineLazyProperty(impl, "Attr", function() {
         this.name = prefix ? prefix + ":" + lname : lname;
     }
 
-    Attr.prototype = Object.create(Object.prototype, {
+    Attr.prototype = O.create(Object.prototype, {
         value: attribute(function() { return this.data; },
                          function(v) { 
                              var oldval = this.data;
                              this.data = v;
-                             if (this.ownerElement.root)
-                                 this.ownerElement.root.mutateAttr(this,oldval);
+                             if (this.ownerElement.rooted)
+                                 this.ownerElement.ownerDocument.mutateAttr(
+                                     this,
+                                     oldval);
                          }),
 
         clone: constant(function clone(e) {
@@ -3691,6 +7930,247 @@ defineLazyProperty(impl, "Attr", function() {
 
 
 /************************************************************************
+ *  src/impl/MutationConstants.js
+ ************************************************************************/
+
+//@line 1 "src/impl/MutationConstants.js"
+// The value of a Text, Comment or PI node changed
+const MUTATE_VALUE = 1;
+
+// A new attribute was added or an attribute value and/or prefix changed
+const MUTATE_ATTR = 2;
+
+// An attribute was removed
+const MUTATE_REMOVE_ATTR = 3;
+
+// A node was removed
+const MUTATE_REMOVE = 4;
+
+// A node was moved
+const MUTATE_MOVE = 5;
+
+// A node (or a subtree of nodes) was inserted
+const MUTATE_INSERT = 6;
+
+
+/************************************************************************
+ *  src/impl/domstr.js
+ ************************************************************************/
+
+//@line 1 "src/impl/domstr.js"
+// A string representation of DOM trees
+var DOMSTR = (function() {
+    const NUL = "\0";
+
+    const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+    const XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
+    const XMLNS_NAMESPACE = "http://www.w3.org/2000/xmlns/";
+    const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
+    const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+    const substring = String.substring;
+    const indexOf = String.indexOf;
+    const charCodeAt = String.charCodeAt;
+    const fromCharCode = String.fromCharCode;
+
+    function stringify(n) {
+        return stringifyNode(n);
+
+        function stringifyNode(n) {
+            switch (n.nodeType) {
+            case Node.TEXT_NODE:
+                return "T" + n.data + NUL;
+            case Node.COMMENT_NODE:
+                return "C" + n.data + NUL;
+            case Node.PROCESSING_INSTRUCTION_NODE:
+                return "P" + n.target + NUL + n.data + NUL;
+            case Node.DOCUMENT_TYPE_NODE:
+                // HTML ignores the publicID and systemID when
+                // serializing nodes, so ignore them here, too
+                return "D" + n.name + NUL;
+            case Node.ELEMENT_NODE:
+                return stringifyElement(n);
+            case NODE.DOCUMENT_FRAGMENT_NODE:
+                return stringifyFragment(n);
+            }
+        }
+
+        function stringifyElement(n) {
+            var s = "";
+            if (n.namespaceURI === HTML_NAMESPACE && !n.prefix) {
+                s = "H" + n.localName + NUL;
+            }
+            else {
+                s = "E" + stringifyNamespace(n.namespaceURI) + n.tagName + NUL;
+            }
+
+            // Number of attributes
+            s += stringifyLength(n.attributes.length);
+            for(var i = 0, l = n.attributes.length; i < l; i++) {
+                s += stringifyAttr(n.attributes[i]);
+            }
+
+            // Now the children
+            s += stringifyLength(n.childNodes.length);
+            for(var i = 0, l = n.childNodes.length; i < l; i++) {
+                s += stringifyNode(n.childNodes[i]);
+            }
+
+            return s;
+        }
+
+        var lastCustomNS = null;
+
+        function stringifyNamespace(ns) {
+            switch(ns) {
+            case HTML_NAMESPACE: return "h";
+            case null: return "u";
+            case XML_NAMESPACE: return "x";
+            case XMLNS_NAMESPACE: return "n";
+            case MATHML_NAMESPACE: return "m";
+            case SVG_NAMESPACE: return "s";
+            default: 
+                if (ns === lastCustomNS) return "l"
+                else {
+                    lastCustomNS = ns;
+                    return "c" + ns + NUL;
+                }
+            }
+        }
+
+        function stringifyAttr(a) {
+            if (a.namespaceURI === null && a.prefix === null) {
+                // set with setAttribute()
+                return "a" + a.name + NUL + a.value + NUL;
+            }
+            else {
+                // set with setAttributeNS()
+                return "A" + stringifyNamespace(a.namespaceURI) +
+                    a.name + NUL + a.value + NUL;
+            }
+        }
+
+        function stringifyLength(n) {
+            if (n < 0) throw new Error("negative length");
+            if (n <= 0xD7FF) return fromCharCode(n);
+            else return fromCharCode("0xFFFF") + String(n) + NUL;
+        }
+
+        function stringifyFragment(n) {
+            var s = "F" + stringifyLength(n.childNodes.length);
+            for(var i = 0, l = n.childNodes.length; i < l; i++) {
+                s += stringifyNode(n.childNodes[i]);
+            }
+            return s;
+        }
+    }
+
+
+    function parse(s, d) {
+        var n = 0,            // current character in s.
+            eos = s.length;   // end-of-string
+
+        if (!d) d = document;
+
+        return parseNode();
+
+        function parseNode() {
+            switch(s[n++]) {
+            case "T":
+                return d.createTextNode(next());
+            case "C":
+                return d.createComment(next());
+            case "P":
+                return d.createProcessingInstruction(next(), next());
+            case "D":
+                return d.implementation.createDocumentType(next(),"","");
+            case "H":  // create with createElement
+                return parseElement("H");
+            case "E":  // create with createElementNS
+                return parseElement("E");
+            case "F":
+                return parseFragment();
+            }
+        }
+
+
+        // Return the characters of s from n up to (but not
+        // including) the next NUL character (or the end of the
+        // string).  Update n to point to the first character
+        // after NUL.  Throw an error if we reach the end of string
+        function next() {
+            if (n >= eos) throw new Error("Unexpected end of string");
+            var end = indexOf(s, NUL, n);
+            if (end === -1) end = eos;
+            var token = substring(s, n, end);
+            n = end+1;
+            return token;
+        }
+
+
+        function parseElement(type) {
+            var e;
+            if (type === "H") 
+                e = d.createElement(next());
+            else
+                e = d.createElementNS(parseNamespace(), next());
+
+            var numattrs = parseLength();
+            for(var i = 0; i < numattrs; i++) {
+                var code = s[n++];
+                if (code === "a") 
+                    e.setAttribute(next(), next());
+                else
+                    e.setAttributeNS(parseNamespace(), next(), next());
+            }
+
+            var numkids = parseLength();
+            for(var i = 0; i < numkids; i++) {
+                e.appendChild(parseNode());
+            }
+
+            return e;
+        }
+
+
+        var lastCustomNS = null;
+
+        function parseNamespace() {
+            switch(s[n++]) {
+            case 'h': return HTML_NAMESPACE;
+            case 'u': return null;
+            case 'x': return XML_NAMESPACE;
+            case 'n': return XMLNS_NAMESPACE;
+            case 'm': return MATHML_NAMESPACE;
+            case 's': return SVG_NAMESPACE;
+            case 'l': return lastCustomNS;
+            case 'c':
+                lastCustomNS = next();
+                return lastCustomNS;
+            }
+        }
+
+        function parseLength() {
+            var l = charCodeAt(s, n++);
+            if (l === 0xFFFF) l = parseInt(next());
+            return l;
+        }
+
+        function parseFragment() {
+            var f = d.createDocumentFragment();
+            var len = parseLength();
+            for(var i = 0; i < len; i++) 
+                f.appendChild(parseNode());
+            return f;
+        }
+    }
+
+    return { stringify: stringify, parse: parse };
+}());
+
+
+
+/************************************************************************
  *  src/impl/Document.js
  ************************************************************************/
 
@@ -3701,6 +8181,9 @@ defineLazyProperty(impl, "Document", function() {
         this.isHTML = isHTML;
         this.implementation = new impl.DOMImplementation();
 
+        // DOMCore says that documents are always associated with themselves.
+        this.ownerDocument = this;
+
         // These will be initialized by our custom versions of
         // appendChild and insertBefore that override the inherited
         // Node methods.
@@ -3710,13 +8193,14 @@ defineLazyProperty(impl, "Document", function() {
         this.childNodes = [];
 
         // Documents are always rooted, by definition
-        this.root = this;
+        this._nid = 1;
+        this._nextnid = 2; // For numbering children of the document
 
         // This maintains the mapping from element ids to element nodes.
         // We may need to update this mapping every time a node is rooted
         // or uprooted, and any time an attribute is added, removed or changed
         // on a rooted element.
-        this.byId = Object.create(null); // inherit nothing
+        this.byId = O.create(null); // inherit nothing
 
         // This property holds a monotonically increasing value akin to 
         // a timestamp used to record the last modification time of nodes
@@ -3742,7 +8226,118 @@ defineLazyProperty(impl, "Document", function() {
         uievents: "uievent"
     };
 
-    Document.prototype = Object.create(impl.Node.prototype, {
+    var tagNameToInterfaceName = {
+        "a": "HTMLAnchorElement",
+        "abbr": "HTMLElement",
+        "address": "HTMLElement",
+        "area": "HTMLAreaElement",
+        "article": "HTMLElement",
+        "aside": "HTMLElement",
+        "audio": "HTMLAudioElement",
+        "b": "HTMLElement",
+        "base": "HTMLBaseElement",
+        "bdi": "HTMLElement",
+        "bdo": "HTMLElement",
+        "blockquote": "HTMLQuoteElement",
+        "body": "HTMLBodyElement",
+        "br": "HTMLBRElement",
+        "button": "HTMLButtonElement",
+        "canvas": "HTMLCanvasElement",
+        "caption": "HTMLTableCaptionElement",
+        "cite": "HTMLElement",
+        "code": "HTMLElement",
+        "col": "HTMLTableColElement",
+        "colgroup": "HTMLTableColElement",
+        "command": "HTMLCommandElement",
+        "datalist": "HTMLDataListElement",
+        "dd": "HTMLElement",
+        "del": "HTMLModElement",
+        "details": "HTMLDetailsElement",
+        "dfn": "HTMLElement",
+        "div": "HTMLDivElement",
+        "dl": "HTMLDListElement",
+        "dt": "HTMLElement",
+        "em": "HTMLElement",
+        "embed": "HTMLEmbedElement",
+        "fieldset": "HTMLFieldSetElement",
+        "figcaption": "HTMLElement",
+        "figure": "HTMLElement",
+        "footer": "HTMLElement",
+        "form": "HTMLFormElement",
+        "h1": "HTMLHeadingElement",
+        "h2": "HTMLHeadingElement",
+        "h3": "HTMLHeadingElement",
+        "h4": "HTMLHeadingElement",
+        "h5": "HTMLHeadingElement",
+        "h6": "HTMLHeadingElement",
+        "head": "HTMLHeadElement",
+        "header": "HTMLElement",
+        "hgroup": "HTMLElement",
+        "hr": "HTMLHRElement",
+        "html": "HTMLHtmlElement",
+        "i": "HTMLElement",
+        "iframe": "HTMLIFrameElement",
+        "img": "HTMLImageElement",
+        "input": "HTMLInputElement",
+        "ins": "HTMLModElement",
+        "kbd": "HTMLElement",
+        "keygen": "HTMLKeygenElement",
+        "label": "HTMLLabelElement",
+        "legend": "HTMLLegendElement",
+        "li": "HTMLLIElement",
+        "link": "HTMLLinkElement",
+        "map": "HTMLMapElement",
+        "mark": "HTMLElement",
+        "menu": "HTMLMenuElement",
+        "meta": "HTMLMetaElement",
+        "meter": "HTMLMeterElement",
+        "nav": "HTMLElement",
+        "noscript": "HTMLElement",
+        "object": "HTMLObjectElement",
+        "ol": "HTMLOListElement",
+        "optgroup": "HTMLOptGroupElement",
+        "option": "HTMLOptionElement",
+        "output": "HTMLOutputElement",
+        "p": "HTMLParagraphElement",
+        "param": "HTMLParamElement",
+        "pre": "HTMLPreElement",
+        "progress": "HTMLProgressElement",
+        "q": "HTMLQuoteElement",
+        "rp": "HTMLElement",
+        "rt": "HTMLElement",
+        "ruby": "HTMLElement",
+        "s": "HTMLElement",
+        "samp": "HTMLElement",
+        "script": "HTMLScriptElement",
+        "section": "HTMLElement",
+        "select": "HTMLSelectElement",
+        "small": "HTMLElement",
+        "source": "HTMLSourceElement",
+        "span": "HTMLSpanElement",
+        "strong": "HTMLElement",
+        "style": "HTMLStyleElement",
+        "sub": "HTMLElement",
+        "summary": "HTMLElement",
+        "sup": "HTMLElement",
+        "table": "HTMLTableElement",
+        "tbody": "HTMLTableSectionElement",
+        "td": "HTMLTableDataCellElement",
+        "textarea": "HTMLTextAreaElement",
+        "tfoot": "HTMLTableSectionElement",
+        "th": "HTMLTableHeaderCellElement",
+        "thead": "HTMLTableSectionElement",
+        "time": "HTMLTimeElement",
+        "title": "HTMLTitleElement",
+        "tr": "HTMLTableRowElement",
+        "track": "HTMLTrackElement",
+        "u": "HTMLElement",
+        "ul": "HTMLUListElement",
+        "var": "HTMLElement",
+        "video": "HTMLVideoElement",
+        "wbr": "HTMLElement",
+    };
+
+    Document.prototype = O.create(impl.Node.prototype, {
         nodeType: constant(DOCUMENT_NODE),
         nodeName: constant("#document"),
         nodeValue: attribute(fnull, fnoop),
@@ -3750,7 +8345,6 @@ defineLazyProperty(impl, "Document", function() {
         // XXX: DOMCore may remove documentURI, so it is NYI for now
         documentURI: attribute(nyi, nyi),
         compatMode: constant("CSS1Compat"),
-        ownerDocument: constant(null),
         parentNode: constant(null),
 
         createTextNode: constant(function(data) {
@@ -3774,7 +8368,11 @@ defineLazyProperty(impl, "Document", function() {
 
             if (this.isHTML)
                 localName = toLowerCase(localName);
-
+/*
+                var interfaceName = tagNameToInterfaceName[localName] ||
+                    "HTMLUnknownElement";
+                return new impl[interfaceName](this, localName);
+  */
             return new impl.Element(this, localName, HTML_NAMESPACE, null);
         }),
 
@@ -3842,7 +8440,7 @@ defineLazyProperty(impl, "Document", function() {
             }
 
             // Now chain to our superclass
-            return impl.Node.prototype.appendChild.call(this, child);
+            return call(impl.Node.prototype.appendChild, this, child);
         }),
 
         insertBefore: constant(function insertBefore(child, refChild) {
@@ -3865,7 +8463,7 @@ defineLazyProperty(impl, "Document", function() {
 
                 this.doctype = child;
             }
-            return impl.Node.prototype.insertBefore.call(this, child, refChild);
+            return call(impl.Node.prototype.insertBefore,this, child, refChild);
         }),        
 
         replaceChild: constant(function replaceChild(child, oldChild) {
@@ -3904,7 +8502,7 @@ defineLazyProperty(impl, "Document", function() {
                 else if (oldChild === this.doctype)
                     this.doctype = null;
             }
-            return impl.Node.prototype.replaceChild.call(this, child, oldChild);
+            return call(impl.Node.prototype.replaceChild, this,child,oldChild);
         }),
 
         removeChild: constant(function removeChild(child) {
@@ -3914,7 +8512,7 @@ defineLazyProperty(impl, "Document", function() {
                 this.documentElement = null;
 
             // Now chain to our superclass
-            return impl.Node.prototype.removeChild.call(this, child);
+            return call(impl.Node.prototype.removeChild, this, child);
         }),
 
         getElementById: constant(function(id) {
@@ -3997,23 +8595,35 @@ defineLazyProperty(impl, "Document", function() {
         // Implementation-specific function.  Called when a text, comment, 
         // or pi value changes.
         mutateValue: constant(function(node) {
+            if (this.mutationHandler) {
+                this.mutationHandler({
+                    type: MUTATE_VALUE,
+                    target: node._nid,
+                    data: node.data
+                });
+            }
         }),
 
         // Invoked when an attribute's value changes. Attr holds the new
         // value.  oldval is the old value.  Attribute mutations can also
         // involve changes to the prefix (and therefore the qualified name)
         mutateAttr: constant(function(attr, oldval) {
+            // Manage id->element mapping for getElementsById()
             if (attr.localName === "id" && attr.namespaceURI === null) {
                 if (oldval !== null) delId(oldval, attr.ownerElement);
                 addId(attr.value, attr.ownerElement);
             }
             
-            // XXX Send a mutation event
-        }),
-
-        // Invoked when a new attribute is added to an element
-        mutateAddAttr: constant(function(attr) { // Add a new attribute
-            this.mutateAttr(attr, null);
+            if (this.mutationHandler) {
+                this.mutationHandler({
+                    type: MUTATE_ATTR,
+                    target: attr.ownerElement._nid,
+                    name: attr.localName,
+                    ns: attr.namespaceURI,
+                    value: attr.value,
+                    prefix: attr.prefix
+                });
+            }
         }),
 
         // Used by removeAttribute and removeAttributeNS for attributes.
@@ -4023,7 +8633,14 @@ defineLazyProperty(impl, "Document", function() {
                 delId(attr.value, attr.ownerElement);
             }
 
-            // XXX send mutation event
+            if (this.mutationHandler) {
+                this.mutationHandler({
+                    type: MUTATE_REMOVE_ATTR,
+                    target: attr.ownerElement._nid,
+                    name: attr.localName,
+                    ns: attr.namespaceURI
+                });
+            }
         }),
 
         // Called by Node.removeChild, etc. to remove a rooted element from
@@ -4031,34 +8648,52 @@ defineLazyProperty(impl, "Document", function() {
         // node is removed, but must recursively mark all descendants as not
         // rooted.
         mutateRemove: constant(function(node) {
+            // Send a single mutation event
+            if (this.mutationHandler) {
+                this.mutationHandler({
+                    type: MUTATE_REMOVE,
+                    target: node._nid
+                });
+            }
+
             // Mark this and all descendants as not rooted
             recursivelyUproot(node);
-
-            // XXX Send a single mutation event
         }),
 
         // Called when a new element becomes rooted.  It must recursively
         // generate mutation events for each of the children, and mark them all
         // as rooted.
         mutateInsert: constant(function(node) {
-            root(node);
+            // Mark node and its descendants as rooted
+            recursivelyRoot(node);
 
-            // XXX send the mutation event
-
-            // And now recurse on all kids 
-            var kids = node.childNodes;
-            for(var i = 0, n = kids.length; i < n; i++)
-                this.mutateInsert(kids[i]);
+            // Send a single mutation event
+            if (this.mutationHandler) {
+                this.mutationHandler({
+                    type: MUTATE_INSERT,
+                    parent: node.parentNode._nid,
+                    index: node.index,
+                    nid: node._nid,
+                    child: DOMSTR.stringify(node)
+                });
+            }
         }),
 
         // Called when a rooted element is moved within the document
         mutateMove: constant(function(node) {
+            if (this.mutationHandler) {
+                this.mutationHandler({
+                    type: MUTATE_MOVE,
+                    target: node._nid,
+                    parent: node.parentNode._nid,
+                    index: node.index
+                });
+            }
         }),
-        
     });
 
     function root(n) {
-        n.root = n.ownerDocument;
+        n._nid = n.ownerDocument._nextnid++;
         // Manage id to element mapping 
         if (n.nodeType === ELEMENT_NODE) {
             var id = n.getAttribute("id");
@@ -4072,9 +8707,11 @@ defineLazyProperty(impl, "Document", function() {
             var id = n.getAttribute("id");
             if (id) delId(id, n);
         }
-        delete n.root;
+        delete n._nid;
     }
-    var recursivelyUproot = recursive(uproot);
+
+    var recursivelyRoot = recursive(root),
+        recursivelyUproot = recursive(uproot);
 
     // Add a mapping from  id to n for n.ownerDocument
     function addId(id, n) {
@@ -4180,7 +8817,7 @@ defineLazyProperty(impl, "DocumentFragment", function() {
         this.childNodes = [];
     }
 
-    DocumentFragment.prototype = Object.create(impl.Node.prototype, {
+    DocumentFragment.prototype = O.create(impl.Node.prototype, {
         nodeType: constant(DOCUMENT_FRAGMENT_NODE),
         nodeName: constant("#document-fragment"),
         nodeValue: attribute(fnull, fnoop),
@@ -4219,7 +8856,7 @@ defineLazyProperty(impl, "DocumentType", function() {
         this.systemId = systemId || "";
     }
 
-    DocumentType.prototype = Object.create(impl.Leaf.prototype, {
+    DocumentType.prototype = O.create(impl.Leaf.prototype, {
         nodeType: constant(DOCUMENT_TYPE_NODE),
         nodeName: attribute(function() { return this.name; }),
         nodeValue: attribute(fnull, fnoop),
@@ -4232,6 +8869,14 @@ defineLazyProperty(impl, "DocumentType", function() {
             return this.name === n.name &&
                 this.publicId === n.publicId &&
                 this.systemId === n.systemId;
+        }),
+        toObject: constant(function toObject() {
+            return {
+                type: DOCUMENT_TYPE_NODE,
+                name: this.name,
+                publicId: this.publicId,
+                systemId: this.sytemId
+            };
         }),
 
     });
@@ -4319,7 +8964,16 @@ defineLazyProperty(impl, "DOMImplementation", function() {
             title.appendChild(d.createTextNode(titleText));
             html.appendChild(d.createElement("body"));
             return d;
-        }
+        },
+
+
+        mozSetOutputMutationHandler: function(doc, handler) {
+            doc.mutationHandler = handler;
+        },
+
+        mozGetInputMutationHandler: function(doc) {
+            nyi();
+        },
     };
 
     return DOMImplementation;
@@ -4447,7 +9101,7 @@ defineLazyProperty(impl, "Event", function() {
         }
     }
 
-    Event.prototype = Object.create(Object.prototype, {
+    Event.prototype = O.create(Object.prototype, {
         stopPropagation: constant(function stopPropagation() {
             this._propagationStopped = true;
         }),
@@ -4494,7 +9148,7 @@ defineLazyProperty(impl, "CustomEvent", function() {
         // Just use the superclass constructor to initialize
         impl.Event.call(this, type, dictionary);
     }
-    CustomEvent.prototype = Object.create(impl.Event.prototype);
+    CustomEvent.prototype = O.create(impl.Event.prototype);
     return CustomEvent;
 });
 
@@ -4511,4 +9165,3 @@ defineLazyProperty(global, "document", function() {
                idl.Document);
 });
 }(this));
-
