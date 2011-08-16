@@ -6,21 +6,34 @@
 
 (function(exports) {
 
-//FIXME: Should be added to dom.js in a visible manner, I think
-const MUTATE_VALUE = 1;
-const MUTATE_ATTR = 2;
-const MUTATE_REMOVE_ATTR = 3;
-const MUTATE_REMOVE = 4;
-const MUTATE_MOVE = 5;
-const MUTATE_INSERT = 6;
+  // Copied from dom.js
+  const MUTATE_VALUE = 1;
+  const MUTATE_ATTR = 2;
+  const MUTATE_REMOVE_ATTR = 3;
+  const MUTATE_REMOVE = 4;
+  const MUTATE_MOVE = 5;
+  const MUTATE_INSERT = 6;
 
   var nodeMap={};
+
+  const actions = [ 'abort', 'blur', 'change', 'click', 'dblclick', 'error',
+        'focus', 'keydown', 'keypress', 'keyup', 'load', 'mousedown', 'mouseup',
+        'mouseout', 'mouseover', 'mousemove', 'reset', 'resize', 'select', 'submit', 'unload' ];
 
   function addChild(parentNode, n, hostNode) {
     // Set a temporary mutation handler to build up the node map
     document.implementation.mozSetOutputMutationHandler(document, function(o){
         if (o.type === MUTATE_INSERT) {
           nodeMap[o.nid] = hostNode;
+        }
+        if (hostNode.addEventListener) {
+          var oldAddEventListener = hostNode.addEventListener;
+          hostNode.addEventListener = function(action, fun, capt) {
+            var f = function() {
+              fun.apply(n, arguments);
+            }
+            oldAddEventListener(action, f, capt);
+          }
         }
     });
     parentNode.appendChild(n);
@@ -34,6 +47,8 @@ const MUTATE_INSERT = 6;
       case Node.ELEMENT_NODE:
         if (!n) {
           n = document.createElement(hostNode.tagName);
+          // Style is needed for some examples.  More fields should probably be added.
+          n.style = hostNode.style;
           addChild(parentNode, n, hostNode);
         }
         for (i=0; i<hostNode.childNodes.length; i++) {
@@ -94,13 +109,9 @@ const MUTATE_INSERT = 6;
   }
 
   function insertAtPosition(parentId, hostNode, position) {
-    var parentNode = nodeMap[parentId];
-    if (position < parentNode.childNodes.length) {
-      parentNode.insertBefore(hostNode, parentNode.childNodes[position]);
-    }
-    else {
-      parentNode.appendChild(hostNode);
-    }
+    var parentNode = nodeMap[parentId],
+        beforeNode = parentNode.childNodes[position];
+    parentNode.insertBefore(hostNode, beforeNode);
   }
 
   exports.copyDOMintoDomjs = function() {
@@ -113,10 +124,11 @@ const MUTATE_INSERT = 6;
 
     var title = document.getElementsByTagName('title')[0];
     var hostTitle = hostDoc.getElementsByTagName('title')[0];
-    title.firstChild.nodeValue = hostTitle.firstChild.data;
+    if (hostTitle) title.firstChild.nodeValue = hostTitle.firstChild.data;
 
     var body = document.getElementsByTagName('body')[0];
     var hostBody = hostDoc.getElementsByTagName('body')[0];
+    body.style = hostBody.style;
     cloneNode(hostBody, document, body);
 
     document.body = body;
@@ -151,6 +163,33 @@ const MUTATE_INSERT = 6;
           throw new Error('Unhandled mutation case: ' + MUTATE_VALUE);
       }
     });
+  }
+
+  // Set listeners to use Narcissus
+  exports.handleListeners = function() {
+    Zaphod.log('Loading listeners for dom.js');
+    var elems = hostDoc.getElementsByTagName('*');
+    for (var i=0; i<elems.length; i++) {
+      var elem = elems[i];
+      for (var j=0; j<actions.length; j++) {
+        var action = actions[j];
+        if (elem.getAttribute('on' + action)) {
+          (function() {
+            var code = elem.getAttribute('on' + action);
+            var fun = function(ev){
+              eval(code);
+            };
+            elem.addEventListener(action,
+                fun,
+                false);
+            // Fire load actions immediately
+            if (action === "load") {
+              fun();
+            }
+          })();
+        }
+      }
+    }
   }
 
 })(this);

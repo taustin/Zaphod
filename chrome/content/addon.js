@@ -172,6 +172,10 @@
 
   // Set listeners to use Narcissus
   function handleListeners() {
+    if (Zaphod.options.useDomjs) {
+      evaluate('handleListeners()');
+      return;
+    }
     var actions = [ 'abort', 'blur', 'change', 'click', 'dblclick', 'error',
         'focus', 'keydown', 'keypress', 'keyup', 'load', 'mousedown', 'mouseup',
         'mouseout', 'mouseover', 'mousemove', 'reset', 'resize', 'select', 'submit', 'unload' ];
