@@ -319,28 +319,36 @@
       Narcissus.interpreter.global['hostDoc'] = content.document;
       evaluate('copyDOMintoDomjs()');
       //FIXME: Clear out utils and hostDoc from narcissus object
+
+      Narcissus.interpreter.getValueHook = function(name) {
+        evaluate('var ' + name + 'document.getElementById(' + name + ');');
+      }
     }
     else {
       // Use the underlying DOM within Zaphod
       var documentHandler = createElementHandler(content.document);
       Narcissus.interpreter.global.document = Proxy.create(documentHandler);
+
+      Narcissus.interpreter.getValueHook = function(name) {
+        var value = content.document.getElementById(name);
+        if (value) {
+          return Proxy.create(createElementHandler(value));
+        }
+        else return undefined;
+      }
     }
 
     evaluate("window = this");
 
-    Narcissus.interpreter.getValueHook = function(name) {
-      var value = content.document.getElementById(name);
-      if (value) {
-        return Proxy.create(createElementHandler(value));
-      }
-      else return undefined;
-    }
+
 
   }
 
   // Loads the Narcissus scripts
   function loadNarcissus() {
     if (this.Narcissus) return;
+
+    Zaphod.log('Loading narcissus');
 
     let baseURL = 'chrome://zaphod/content/';
     eval(read(baseURL + 'narcissus/jsdefs.js'));
@@ -371,7 +379,10 @@
 
   Zaphod.onPageUnload = function(aEvent) {
     // Eliminate narcissus
-    if (this.Narcissus) { delete this.Narcissus; }
+    if (this.Narcissus) {
+      Zaphod.clearAllTimers();
+      delete this.Narcissus;
+    }
   }
 }(Zaphod));
 

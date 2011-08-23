@@ -30,9 +30,12 @@
           var oldAddEventListener = hostNode.addEventListener;
           hostNode.addEventListener = function(action, fun, capt) {
             var f = function() {
-              fun.apply(n, arguments);
+              return fun.apply(n, arguments);
             }
-            oldAddEventListener(action, f, capt);
+            return oldAddEventListener(action, f, capt);
+          }
+          n.addEventListener = function(a,f,c) {
+            return hostNode.addEventListener(a,f,c);
           }
         }
     });
@@ -47,8 +50,13 @@
       case Node.ELEMENT_NODE:
         if (!n) {
           n = document.createElement(hostNode.tagName);
-          // Style is needed for some examples.  More fields should probably be added.
-          n.style = hostNode.style;
+          // FIXME: Some cheats to deal with magic properties.  Not exhaustive
+          ['style', 'value', 'innerHTML', 'src', 'offsetLeft', 'offsetTop'].forEach(function(prop) {
+            Object.defineProperty(n, prop, {
+                get: function() { return hostNode[prop]; },
+                set: function(newVal) { hostNode[prop] = newVal; }
+            });
+          });
           addChild(parentNode, n, hostNode);
         }
         for (i=0; i<hostNode.childNodes.length; i++) {
@@ -131,6 +139,11 @@
     body.style = hostBody.style;
     cloneNode(hostBody, document, body);
 
+    // Cheat: creating getter/setter pair for scrollTop
+    Object.defineProperty(body, 'scrollTop', {
+        get: function() { return hostBody.scrollTop; }
+    });
+
     document.body = body;
 
     // Callback handler registers mutation events to reflect changes in the host DOM.
@@ -141,7 +154,13 @@
           nodeMap[o.target].data = o.data;
           break;
         case MUTATE_ATTR:
-          nodeMap[o.target].setAttribute(o.name, o.value);
+          if (o.ns === null && o.prefix === null) {
+            nodeMap[o.target].setAttribute(o.name, o.value);
+          }
+          else {
+            // TODO: need to test this version
+            nodeMap[o.target].setAttributeNS(o.ns, o.name, o.value);
+          }
           break;
         case MUTATE_REMOVE_ATTR:
           nodeMap[o.target].removeAttribute(o.name);
@@ -155,7 +174,6 @@
           insertAtPosition(o.parent, hostNode, o.index);
           break;
         case MUTATE_INSERT:
-          //FIXME: Need to deal with more complex strings
           hostNode = createHostNode(o.child, o.nid);
           insertAtPosition(o.parent, hostNode, o.index);
           break;
@@ -175,11 +193,16 @@
         var action = actions[j];
         if (elem.getAttribute('on' + action)) {
           (function() {
-            var code = elem.getAttribute('on' + action);
-            var fun = function(ev){
-              eval(code);
+            var el = elem;
+            var code = el.getAttribute('on' + action);
+            var eventName = code.replace(/.*?\((.*?)\).*/, "$1");
+            var fun = function(evnt) {
+              this[eventName] = evnt;
+              with (el) {
+                eval(code);
+              }
             };
-            elem.addEventListener(action,
+            el.addEventListener(action,
                 fun,
                 false);
             // Fire load actions immediately
