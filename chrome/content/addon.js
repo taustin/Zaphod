@@ -44,7 +44,7 @@
 
   // Set Narcissus to be used as the JS engine
   function setNarcissusAsEngine(verbose) {
-    Zaphod.statusImage.src = "chrome://zaphod/content/mozilla_activated.ico";
+    Zaphod.statusImage.src = "chrome://zaphod/content/zaphod_active.ico";
     Zaphod.statusImage.tooltipText = "JS engine = Narcissus";
     Zaphod.mozJSPref.setBoolPref("enabled", false);
     if (verbose) { alert("Narcissus has been set as your JavaScript engine"); }
@@ -52,7 +52,7 @@
 
   // Set Spidermonkey to be used as the JS engine
   function setSpidermonkeyAsEngine(verbose) {
-    Zaphod.statusImage.src = "chrome://zaphod/content/mozilla_deactivated.ico";
+    Zaphod.statusImage.src = "chrome://zaphod/content/zaphod_inactive.ico";
     Zaphod.statusImage.tooltipText = "JS engine = SpiderMonkey";
     Zaphod.mozJSPref.setBoolPref("enabled", true);
     if (verbose) { alert("SpiderMonkey has been reset as your JavaScript engine"); }

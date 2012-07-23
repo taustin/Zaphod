@@ -5,7 +5,7 @@
   <script type="application/x-javascript" src="chrome://zaphod/content/addon.js" />
   <statusbar id="status-bar">
     <statusbarpanel id="narc-panel">
-      <image id="narcissus-logo" src="chrome://zaphod/content/mozilla_deactivated.ico" onclick="Zaphod.toggleJSEngine()" />
+      <image id="narcissus-logo" src="chrome://zaphod/content/zaphod_inactive.ico" onclick="Zaphod.toggleJSEngine()" />
     </statusbarpanel>
  </statusbar>
 </overlay>
