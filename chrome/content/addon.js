@@ -174,51 +174,11 @@
   function handleListeners() {
     if (Zaphod.options.useDomjs) {
       evaluate('handleListeners()');
-      return;
     }
-    var actions = [ 'abort', 'blur', 'change', 'click', 'dblclick', 'error',
-        'focus', 'keydown', 'keypress', 'keyup', 'load', 'mousedown', 'mouseup',
-        'mouseout', 'mouseover', 'mousemove', 'reset', 'resize', 'select', 'submit', 'unload' ];
-    var elems = content.document.getElementsByTagName('*');
-    for (var i=0; i<elems.length; i++) {
-      let elem = elems[i];
-      for (let j=0; j<actions.length; j++) {
-        let action = actions[j];
-        if (elem.getAttribute('on' + action)) {
-          (function() {
-            let code = elem.getAttribute('on' + action);
-            // Add ids to elements with listeners that currently do not have ids
-            if (!elem.id) {
-              let newID = generateUniqueId();
-              elem.setAttribute('id', newID);
-            }
-            // TODO: Fix this -- there has to be a cleaner way.  Also, need more than just style.
-            let f = '(function() { var style=this.style; ' + code + '}).apply(' + elem.id + ');';
-            let fun = function(evnt){
-              Narcissus.interpreter.global.event = evnt;
-              evaluate(f);
-              Narcissus.interpreter.global.event = undefined;
-            };
-            elem.addEventListener(action,
-                fun,
-                false);
-            // Fire load actions immediately
-            if (action === "load") {
-              fun();
-            }
-          })();
-        }
-      }
+    else {
+      Zaphod.nativeHandleListeners();
     }
   }
-
-  // Generate unique ids for tagging elements without ids
-  var generateUniqueId = (function() {
-    var id=0;
-    return function() {
-      return "narcUid" + id++;
-    }
-  })();
 
   // Return true if the page explicitly sets the default script type to 'text/narcissus'
   Zaphod.isScriptEngineForPage = function() {
@@ -236,51 +196,6 @@
   // Return true if the script tag specifies narcissus
   function isNarcissusType(scriptType) {
     return scriptType === "application/narcissus" || scriptType === "text/narcissus";
-  }
-
-  // Create a handler to search for child elements for unknown properties
-  function createElementHandler(elem) {
-    var handler = Narcissus.definitions.makePassthruHandler(elem);
-    /*///// Is 'has' needed?
-    handler.has = function(name) {
-      if (name in elem) { return true; }
-
-      var children = elem.getElementsByTagName('*');
-      for (let i=0; i<children.length; i++) {
-        let child = children[i];
-        if (child.name === name) {
-          return true;
-        }
-      }
-      return false;
-    }
-    //*///////////
-    handler.get = function(receiver, name) {
-      if (elem[name]) {
-        if (Narcissus.definitions.isNativeCode(elem[name])) {
-          return function() { return elem[name].apply(elem, arguments); };
-        }
-        else return elem[name];
-      }
-
-      var matches = [];
-      var children = elem.getElementsByTagName('*');
-      for (let i=0; i<children.length; i++) {
-        let child = children[i];
-        if (child.name === name) {
-          matches.push(child);
-        }
-      }
-      switch (matches.length) {
-        case 0:
-          return undefined;
-        case 1:
-          return Proxy.create(createElementHandler(matches[0]));
-        default:
-          return matches;
-      }
-    }
-    return handler;
   }
 
   // Reads a file from the chrome code and returns a string of its contents
@@ -302,46 +217,25 @@
     return str;
   }
 
-  // Initializes the DOM, either by wrapping the host DOM in a proxy and making
-  // it available to Narcissus, or by loading dom.js and connecting that to
-  // the host DOM.
+  // Initializes the DOM by loading dom.js and connecting that to the host DOM.
   function loadDOM() {
-    if (Zaphod.options.useDomjs) {
-      Zaphod.log('Loading dom.js');
-      var domjs = read('chrome://zaphod/content/domNarc.js');
-      evaluate(domjs, 'domNarc.js', 1);
+    Zaphod.log('Loading dom.js');
+    var domjs = read('chrome://zaphod/content/domNarc.js');
+    evaluate(domjs, 'domNarc.js', 1);
 
-      // Utilities needed for dom.js
-      var utils = read('chrome://zaphod/content/utils.js');
-      evaluate(utils, 'utils.js', 1);
+    // Utilities needed for dom.js
+    var utils = read('chrome://zaphod/content/utils.js');
+    evaluate(utils, 'utils.js', 1);
 
-      // Copy the host DOM
-      Narcissus.interpreter.global['hostDoc'] = content.document;
-      evaluate('copyDOMintoDomjs()');
-      //FIXME: Clear out utils and hostDoc from narcissus object
+    // Copy the host DOM
+    Narcissus.interpreter.global['hostDoc'] = content.document;
+    evaluate('copyDOMintoDomjs()');
+    //FIXME: Clear out utils and hostDoc from narcissus object
 
-      Narcissus.interpreter.getValueHook = function(name) {
-        evaluate('var ' + name + 'document.getElementById(' + name + ');');
-      }
+    Narcissus.interpreter.getValueHook = function(name) {
+      evaluate('var ' + name + 'document.getElementById(' + name + ');');
     }
-    else {
-      // Use the underlying DOM within Zaphod
-      var documentHandler = createElementHandler(content.document);
-      Narcissus.interpreter.global.document = Proxy.create(documentHandler);
-
-      Narcissus.interpreter.getValueHook = function(name) {
-        var value = content.document.getElementById(name);
-        if (value) {
-          return Proxy.create(createElementHandler(value));
-        }
-        else return undefined;
-      }
-    }
-
     evaluate("window = this");
-
-
-
   }
 
   // Loads the Narcissus scripts
@@ -362,7 +256,14 @@
     eval(read(baseURL + 'narcissus/jsexec.js'));
     eval(read(baseURL + 'browserAPIs.js'));
 
-    loadDOM();
+    // Two different ways of handling the DOM.
+    if (Zaphod.options.useDomjs) {
+      loadDOM();
+    }
+    else {
+      eval(read(baseURL + 'nativeDomLoader.js'));
+      Zaphod.nativeLoadDOM();
+    }
   }
 
   Zaphod.onPageLoad = function(aEvent) {
