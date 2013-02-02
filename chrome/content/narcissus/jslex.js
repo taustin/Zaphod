@@ -246,7 +246,7 @@ Narcissus.lexer = (function() {
                 this.cursor--;
 
                 this.lexExponent();
-                token.value = parseFloat(token.start, this.cursor);
+                token.value = parseFloat(input.substring(token.start, this.cursor));
             } else if (ch === 'x' || ch === 'X') {
                 do {
                     ch = input[this.cursor++];
