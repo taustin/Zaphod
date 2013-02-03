@@ -556,7 +556,9 @@ Narcissus.interpreter = (function() {
                         continue;
                     u = s;                      // force match to do default
                 }
-                if (u === s) {
+                // Must explicitly test matchDefault, because if s is NaN,
+                // then u === s will never succeed.
+                if (u === s || matchDefault) {
                     for (;;) {                  // this loop exits switch_loop
                         if (t.statements.children.length) {
                             try {
