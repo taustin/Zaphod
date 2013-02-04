@@ -1342,13 +1342,29 @@ Narcissus.interpreter = (function() {
                                        }
                                    }, true, true, true);
 
-        // Since we use native functions such as Date along with host ones such
-        // as global.eval, we want both to be considered instances of the native
-        // Function constructor.
-        definitions.defineProperty(Fp, "__hasInstance__",
-                                   function (v) {
-                                       return v instanceof Function || v instanceof global.Function;
-                                   }, true, true, true);
+        definitions.defineProperty(Fp, "__hasInstance__", function (v) {
+                                        // Modified from FunctionObject.prototype.
+                                        if (isPrimitive(v))
+                                            return false;
+                                        // The Function accessible in the
+                                        // object lang (global.Function) has had
+                                        // its prototype overwritten.
+                                        // This causes problems since
+                                        // global.Function.prototype isn't to
+                                        // the spec (sec 15.3.3.1)
+                                        var p = this===global.Function ? Function.prototype : this.prototype;
+                                        if (isPrimitive(p)) {
+                                            throw new TypeError("'prototype' property is not an object",
+                                                this.node.filename, this.node.lineno);
+                                        }
+                                        var o;
+                                        while ((o = Object.getPrototypeOf(v))) {
+                                            if (o === p)
+                                                return true;
+                                            v = o;
+                                        }
+                                        return false;
+                                    }, true, true, true);
     }
 
     function thunk(f, x) {
